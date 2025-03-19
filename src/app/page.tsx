@@ -1,6 +1,7 @@
-import { MessageSquare } from "lucide-react";
+import { MessageSquare} from "lucide-react";
 import { Button } from "@/components/ui/button"
 import Link from "next/link";
+import TypeAnimation from "@/components/ui/typeAnimation";
 
 export default function Home() {
   return (
@@ -25,14 +26,24 @@ export default function Home() {
             </Button>
           </div>
         </header>
-        <main>
-
+        <div className="bg-[radial-gradient(circle,rgba(255,255,255,1)_1%,rgba(255,255,255,0.05)_100%)] mx-auto h-0.5 opacity-50 "></div>
+        <main className="">
+          <div className="container text-amber-50">
+            <TypeAnimation speed={30} />
+          </div>
         </main>
         <section>
 
         </section>
-        <footer>
-
+        <footer className="text-amber-50 border-slate-700 border-t">
+          <div className="container mx-auto gap-4 text-center text-slate-400">
+            <div className="flex justify-center gap-6 mb-6">
+              <Link href="" className="hover:text-amber-50 transition-colors">Terms</Link>
+              <Link href="#" className="hover:text-amber-50 transition-colors">Privacy</Link>
+              <Link href="#" className="hover:text-amber-50 transition-colors">Contact</Link>
+            </div>
+            <p>© 2025 All lefts reserved 🤭.</p>
+          </div>
         </footer>
       </div>
     </div>
