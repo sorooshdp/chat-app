@@ -1,11 +1,27 @@
-import { Check, MessageSquare, Sparkle, Zap, Shield, Users, Brain } from "lucide-react";
+import { 
+  Check, 
+  MessageSquare, 
+  Sparkle, 
+  Zap, 
+  Shield, 
+  Users, 
+  Brain, 
+  ArrowRight, 
+  Skull, 
+  X, 
+  Laugh, 
+  Rocket, 
+  Coffee} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import TypeAnimation from "@/components/ui/typeAnimation";
+import AnimatedBackground from "@/components/ui/animatedBackground";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-black">
+  <div className="relative min-h-screen">
+      {/* Animated Background */}
+      <AnimatedBackground />
       <div>
         {/* Header */}
         <header className="container mx-auto py-6 px-14 flex justify-between items-centerr">
@@ -37,7 +53,6 @@ export default function Home() {
         {/*divider */}
         <div className="bg-[radial-gradient(circle,rgba(255,255,255,1)_1%,rgba(255,255,255,0.05)_100%)] mx-auto h-0.5 opacity-50 "></div>
 
-        
         <main>
           {/* Hero */}
           <div className="container mx-auto px-4 py-20 max-h-80">
@@ -45,7 +60,7 @@ export default function Home() {
           </div>
           
           {/* Features */}
-          <section className="h-min-[20rem] py-24 flex flex-col items-center justify-center text-amber-50">
+          <section id="features" className="h-min-[20rem] py-24 flex flex-col items-center justify-center text-amber-50">
             <div className="flex flex-col items-center gap-4 mb-16">
               <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mb-2">
                 <Sparkle className="w-8 h-8 text-blue-600" />
@@ -142,8 +157,167 @@ export default function Home() {
                   </li>
                 </ul>
               </div>
-
             </div>
+            
+            <div className="text-center mt-10">
+              <Button className="bg-blue-600 hover:bg-blue-500 text-amber-50 px-8 py-6 text-lg">
+                <Link href="/signup" className="flex items-center justify-center">
+                  Try These Features <ArrowRight className="h-5 w-5 ml-5" />
+                </Link>
+              </Button>
+            </div>
+          </section>
+
+          {/**pricing */}
+          <section id="pricing" className="py-24 text-amber-50">
+            <div className="container mx-auto px-4">
+              <div className="flex flex-col items-center gap-4 mb-16">
+                <div className="bg-pink-600/20 rounded-full w-16 h-16 flex justify-center items-center mb-3"><Skull className="h-8 w-8 text-pink-400"></Skull></div>
+                <h2 className="text-4xl font-bold text-center mb-4">The fairest prices in the world</h2>
+                <p className="text-slate-500 mb-4 text-center max-w-2xl">I&apos;m not actually going to charge you all of the features are jokes</p>
+              </div>
+
+              <div className="grid md:grid-cols-3 mx-auto gap-7 max-w-5xl">
+                <div className="bg-slate-900/50 backdrop-blur-sm p-8 rounded-2xl flex flex-col items-center border-2 border-slate-800 hover:border-blue-500/50 transition-all hover:-translate-y-1 duration-300">
+                  <div className="text-center flex flex-col items-center justify-center mb-4">
+                    <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/20 mb-4">
+                      <Users className="h-8 w-8 text-blue-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-amber-50 mb-2">Cheapskate</h3>
+                    <div className="text-3xl font-bold text-amber-50 mb-2">
+                      $0<span className="text-lg font-normal  text-slate-500">/Forever</span>
+                    </div>
+                    <p className="text-slate-500">For broke students and &quot;exposure&quot; paying clients</p>
+                  </div> 
+
+                  <ul className="space-y-4 mb-8">
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">5 chats (we know you don&apos;t have more friends anyway)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">Basic messaging (text only, like it&apos;s 1999)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">1GB storage (approximately 3 selfies in 2025)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <X className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">Ads for things you just talked about (spooky!)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <X className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">Support (you&apos;re on your own, buddy)</span>
+                    </li>
+                  </ul>
+                  <Button className="w-full border-slate-700 bg-blue-600 hover:bg-blue-500 text-amber-50 px-8 py-6">
+                    <Link href="/signup" className="flex items-center justify-center">
+                      Get Started
+                    </Link>
+                  </Button>
+                </div>
+
+
+                <div className="bg-slate-900/50 backdrop-blur-sm p-8 rounded-2xl flex flex-col items-center border-2 border-blue-600 shadow-lg shadow-blue-500 transition-all hover:-translate-y-1 duration-300">
+                  <div className="text-center flex flex-col items-center justify-center mb-4">
+                    <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/20 mb-4">
+                      <Rocket className="h-8 w-8 text-blue-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-amber-50 mb-2">Actually Good</h3>
+                    <div className="text-3xl font-bold text-amber-50 mb-2">
+                      $9.99<span className="text-lg font-normal  text-slate-500">/Month</span>
+                    </div>
+                    <p className="text-slate-500">For people with standards and disposable income</p>
+                  </div> 
+
+                  <ul className="space-y-4 mb-8">
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">Unlimited chats (go wild, social butterfly!)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">All messaging features (GIFs, voice, video, the works)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">50GB storage (hoard those memes like a digital dragon)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">No ads (we respect you too much to spy on you)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">Priority support (we&apos;ll pretend to care)</span>
+                    </li>
+                  </ul>
+                  <Button className="w-full border-slate-700 bg-blue-600 hover:bg-blue-500 text-amber-50 px-8 py-6">
+                    <Link href="/signup" className="flex items-center justify-center">
+                      Become Awesome
+                    </Link>
+                  </Button>
+                </div>
+
+
+                <div className="bg-slate-900/50 backdrop-blur-sm p-8 rounded-2xl flex flex-col items-center border-2 border-slate-800 hover:border-purple-500/50 transition-all hover:-translate-y-1 duration-300">
+                  <div className="text-center flex flex-col items-center justify-center mb-4">
+                    <div className="flex items-center justify-center w-16 h-16 rounded-full bg-purple-500/20 mb-4">
+                      <Laugh className="h-8 w-8 text-purple-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-amber-50 mb-2">Showoff</h3>
+                    <div className="text-3xl font-bold text-amber-50 mb-2">
+                      $24.99<span className="text-lg font-normal  text-slate-500">/Month</span>
+                    </div>
+                    <p className="text-slate-500">For people who buy gold-plated toothbrushes</p>
+                  </div> 
+
+                  <ul className="space-y-4 mb-8">
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">Everything in Actually Good, plus bragging rights</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">Custom emoji maker (for your weird inside jokes)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">500GB storage (digital hoarding enabler)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">VIP support (we&apos;ll actually care about your problems)</span>
+                    </li>
+                    <li className="flex items-start">
+                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-300">A digital trophy that does absolutely nothing</span>
+                    </li>
+                  </ul>
+                  <Button className="w-full border-slate-700 bg-blue-600 hover:bg-blue-500 text-amber-50 px-8 py-6">
+                    <Link href="/signup" className="flex items-center justify-center">
+                      Flex On Friends
+                    </Link>
+                  </Button>
+                </div>
+
+              </div>
+            </div>
+            <div className=" mt-16 bg-slate-900/70 backdrop-blur-md border border-slate-800 rounded-xl p-6 max-w-2xl mx-auto">
+              <div className="flex items-center gab-6 mb-2">
+                <Coffee className="w-6 h-6 text-amber-400 mr-2"/>
+                <h3 className="font-bold text-amber-50 text-lg">Money-Back Guarantee</h3>
+              </div>
+              <p className="text-slate-400">If you&apos;re not satisfied within 30 days, wel&apos;l give you a full refund. No questions asked. Okay, maybe
+                one question: &quot;Why are you asking for money back on a free product??&quot;</p>
+            </div>
+          </section>
+
+          {/**about section */}
+          <section id="about" >
+
           </section>
         </main>
 

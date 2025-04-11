@@ -67,7 +67,7 @@ export default function TypeAnimation({ speed, texts = QUOTES }: TypeAnimationPr
       </div>
       <div className="min-h-[160px] flex items-center justify-center">
         <h1 className="text-2xl md:text-4xl font-bold leading-tight text-amber-50 mb-6 max-w-3xl">
-          <span>&quot;{output}&quot;</span>
+          <span>&quot;{output}<span className="inline-block w-[6.5px] h-[36px] bg-blue-700 animate-(--blink-animation)"></span>&quot;</span>
         </h1>
       </div>
     </div>
