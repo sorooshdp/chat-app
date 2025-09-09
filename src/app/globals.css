@@ -5,7 +5,7 @@
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --border: 214.3 31.8% 91.4%;
-    --radius: 0.75rem; 
+    --radius: 0.75rem;
     --blink-animation: blink 0.69s ease-in-out infinite alternate;
   }
   * {
@@ -28,6 +28,7 @@
 html {
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.3);
+  scroll-behavior: smooth;
 }
 
 ::-webkit-scrollbar {

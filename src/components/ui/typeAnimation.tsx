@@ -1,5 +1,5 @@
 "use client";
-import { MessageSquare } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 interface TypeAnimationProps {
@@ -61,11 +61,11 @@ export default function TypeAnimation({ speed, texts = QUOTES }: TypeAnimationPr
   }, [index, speed, texts, textIndex]);
 
   return (
-    <div className="flex flex-col items-center text-center space-y-8 ">
+    <div className="flex flex-col w-[80%] items-center text-center space-y-8 ">
       <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mb-2">
-        <MessageSquare className="h-8 w-8 text-blue-600" />
+      <Image src={"/nexus.png"} alt="Logo" width={32} height={32} className="text-blue-500" />
       </div>
-      <div className="min-h-[160px] flex items-center justify-center">
+      <div className="min-h-[200px] flex items-center justify-center">
         <h1 className="text-2xl md:text-4xl font-bold leading-tight text-amber-50 mb-6 max-w-3xl">
           <span>&quot;{output}<span className="inline-block w-[6.5px] h-[36px] bg-blue-700 animate-(--blink-animation)"></span>&quot;</span>
         </h1>

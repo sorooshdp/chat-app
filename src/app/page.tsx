@@ -11,11 +11,13 @@ import {
   X, 
   Laugh, 
   Rocket, 
-  Coffee} from "lucide-react";
+  Coffee,
+  Heart} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import TypeAnimation from "@/components/ui/typeAnimation";
 import AnimatedBackground from "@/components/ui/animatedBackground";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -26,17 +28,17 @@ export default function Home() {
         {/* Header */}
         <header className="container mx-auto py-6 px-14 flex justify-between items-centerr">
           <div className="flex items-center gap-2 px-4">
-            <MessageSquare className="h-6 w-6 text-blue-600" />
+            <Image src={"/nexus.png"} alt="Logo" width={40} height={40} />
             <span className="font-bold text-xl text-amber-50">Nexus</span>
           </div>
           <nav className="md:flex gap-8 justify-center items-center">
-            <Link href="/features" className="text-amber-50 hover:text-blue-500 transition-colors">
+            <Link href="#features" className="text-amber-50 hover:text-blue-500 transition-colors">
               Features
             </Link>
-            <Link href="/pricing" className="text-amber-50 hover:text-blue-500 transition-colors">
+            <Link href="#pricing" className="text-amber-50 hover:text-blue-500 transition-colors">
               Pricing
             </Link>
-            <Link href="/about" className="text-amber-50 hover:text-blue-500 transition-colors">
+            <Link href="#about" className="text-amber-50 hover:text-blue-500 transition-colors">
               About
             </Link>
           </nav>
@@ -55,7 +57,7 @@ export default function Home() {
 
         <main>
           {/* Hero */}
-          <div className="container mx-auto px-4 py-20 max-h-80">
+          <div className="container flex items-center justify-center mx-auto px-4 py-20 min-h-[100vh]">
             <TypeAnimation speed={50} />
           </div>
           
@@ -169,7 +171,7 @@ export default function Home() {
           </section>
 
           {/**pricing */}
-          <section id="pricing" className="py-24 text-amber-50">
+          <section id="pricing" className="py-24 px-2 text-amber-50">
             <div className="container mx-auto px-4">
               <div className="flex flex-col items-center gap-4 mb-16">
                 <div className="bg-pink-600/20 rounded-full w-16 h-16 flex justify-center items-center mb-3"><Skull className="h-8 w-8 text-pink-400"></Skull></div>
@@ -316,8 +318,105 @@ export default function Home() {
           </section>
 
           {/**about section */}
-          <section id="about" >
+          <section id="about" className="py-24 px-1 text-amber-50">
+            <div className="container px-4 mx-auto">
+              <div className="flex flex-col items-center gap-4 mb-16">
+                <div className="bg-green-600/20 rounded-full w-16 h-16 flex justify-center items-center mb-3">
+                <Heart className="h-8 w-8 text-green-400" /></div>
+                <h2 className="text-4xl font-bold text-center mb-4">The Weird Humans Behind This</h2>
+                <p className="text-slate-500 mb-4 text-center max-w-2xl">We&apos;re not a faceless corporation. We&apos;re not a corporation at all.</p>
+              </div>
+            </div>
 
+            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-8 max-w-4xl mx-auto mb-16">
+              <div className="space-y-8">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-1"><Rocket className="w-6 h-6 text-blue-400"/></div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-2">Out origin story</h3>
+                    <p className="text-slate-400 text-justify">Nexus began when our founder tried to text his crush and accidentally sent it to his boss
+                        instead. After getting fired, he decided to build a chat app with an &quot;unsend&quot; button. The crush
+                        never called back, but at least we got a company out of it.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-1"><MessageSquare className="w-6 h-6 text-purple-400"/></div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-2">Our Mission</h3>
+                    <p className="text-slate-400 text-justify">Our mission is to create a chat app so good that people will actually put down their phones and talk to each other in person... Wait, that&apos;s not right. Our mission is to keep you glued to your screen 24/7 while making you think you&apos;re being social. Much better!</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-1"><Users className="w-6 h-6 text-green-400"/></div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-2">The Dream Team</h3>
+                    <p className="text-slate-400 text-justify">Our team consists of insomniacs, coffee addicts, and people who think &quot;debugging&quot; means removing insects from their keyboards. We&apos;ve got former rocket scientists working alongside people who still can&apos;t figure out how to use the office microwave. Diversity is our strength.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-10 grid md:grid-cols-3 gap-6 max-w-4xl backdrop-blur-sm mx-auto">
+              <div className="bg-slate-900/50 border border-slate-800 backdrop-blur-sm rounded-xl p-6 hover:border-blue-500/50 transition-colors">
+                <div className="flex flex-col mb-4">
+                  <div className="flex items-center gap-4 mb-4"> 
+                    <div className="flex items-center justify-center w-10 h-10 bg-amber-300 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 font-bold">J</div>
+                    <div>
+                      <h4 className="font-bold text-white">Jake R.</h4>
+                      <p className=" text-xs text-slate-400">CEO & Chief Meme Officer</p>              
+                    </div>
+                  </div>
+                  <p className="text-slate-300 italic">
+                  &quot;I started this company because I was tired of explaining to my parents how to use other chat apps. If they can use NexusChat, anyone can.&quot;
+                  </p>
+                </div>  
+                <div className="mt-auto pt-4 border-t border-slate-400">
+                  <p className="text-xs text-slate-400">
+                  Previously: Failed Startup #1, Failed Startup #2
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-900/50 border border-slate-800 backdrop-blur-sm rounded-xl p-6 hover:border-purple-500/50 transition-colors">
+                <div className="flex flex-col mb-4">
+                  <div className="flex items-center gap-4 mb-4"> 
+                    <div className="flex items-center justify-center w-10 h-10 bg-amber-300 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 font-bold">B</div>
+                    <div>
+                      <h4 className="font-bold text-white">Saeed K.</h4>
+                      <p className=" text-xs text-slate-400">CTO & Bug Creator</p>              
+                    </div>
+                  </div>
+                  <p className="text-slate-300 italic">
+                  &quot;I write code like I make coffee - strong, occasionally bitter, and guaranteed to keep you up all night wondering what went wrong..&quot;
+                  </p>
+                </div>  
+                <div className="mt-auto pt-4 border-t border-slate-400">
+                  <p className="text-xs text-slate-400">
+                  Previously: NASA, Google, My Parent&apos;s Basement
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-900/50 border border-slate-800 backdrop-blur-sm rounded-xl p-6 hover:border-green-500/50 transition-colors">
+                <div className="flex flex-col mb-4">
+                  <div className="flex items-center gap-4 mb-4"> 
+                    <div className="flex items-center justify-center w-10 h-10 bg-amber-300 rounded-full bg-gradient-to-br from-green-500 to-teal-5000 font-bold">M</div>
+                    <div>
+                      <h4 className="font-bold text-white">Miguel L.</h4>
+                      <p className=" text-xs text-slate-400">Design Wizard & Coffee Consumer</p>              
+                    </div>
+                  </div>
+                  <p className="text-slate-300 italic">
+                  &quot;I design interfaces so intuitive that even your technophobic uncle could use them. That&apos;s not saying much though, he still prints his emails.&quot;
+                  </p>
+                </div>  
+                <div className="mt-auto pt-4 border-t border-slate-400">
+                  <p className="text-xs text-slate-400">
+                  Previously: Apple, Pixar, Kindergarten Crayon Artist
+                  </p>
+                </div>
+              </div>
+            </div>
           </section>
         </main>
 

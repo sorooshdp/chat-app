@@ -1,70 +1,62 @@
 "use client";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 
 interface Particle {
   x: number;
   y: number;
-  radius: number;
-  color: string;
   vx: number;
   vy: number;
+  size: number;
+  color: string;
 }
 
-const AnimatedBackground = () => {
+const baseParticleCount = Math.min(80, Math.floor(window.innerWidth / 20));
+const particles: Particle[] = [];
+const blueShades = ["rgba(79, 139, 255, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(37, 99, 235, 0.8)"];
+const blueStrokeBase = "59, 130, 246";
+const connectionDistance = 150;
+const damping = 0.98;
+const mouseRadius = 130;
+
+const AnimatedCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const shades = ["rgba(79, 139, 255, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(37, 99, 235, 0.8)"];
-    const particles: Particle[] = [];
-    const particleCount = 100;
-    const maxRadius = 3;
-
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const createParticle = () => {
-        const particle : Particle = {
-            x : Math.random() * canvas.width,
-            y : Math.random() * canvas.height,
-            radius : Math.random() * maxRadius + 1,
-            color : shades[Math.random() * shades.length],
-            vx: (Math.random() - 0.5) * 0.5,
-            vy: (Math.random() - 0.5) * 0.5,
-        }
+    let animationFrameId: number;
 
-        particles.push(particle);
-    }
-
-    for (let i = 0; i < particleCount; i++) {
-        createParticle();
-    }
-
-    const updateParticles = () => {
-        for (let i = 0; i < particleCount; i++) {
-            const p = particles[i];
-
-            p.x += p.vx;
-            p.y += p.vy;
-            if (p.x + p.radius > canvas.width || p.x - p.radius < 0) {
-                p.vx *= -1;
-            }
-            if (p.y + p.radius > canvas.height || p.y - p.radius < 0) {
-                p.vy *= -1;
-            }
-
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            ctx.fillStyle = p.color;
-            ctx.fill();
-        }
-    }
-
+    // Set canvas size to match window size
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
+
+    resize();
+
+    let mouseX = 0;
+    let mouseY = 0;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      mouseX = event.clientX;
+      mouseY = event.clientY;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    for (let i = 0; i < baseParticleCount; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        size: Math.random() * 3 + 1,
+        color: blueShades[Math.floor(Math.random() * blueShades.length)],
+      });
+    }
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -77,19 +69,91 @@ const AnimatedBackground = () => {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      updateParticles();
+      // Update and draw particles
+      drawParticlesConnctions(ctx);
+      updateAndDrawParticles(ctx);
+
+      animationFrameId = requestAnimationFrame(draw);
     };
 
-    resize();
+    const drawParticlesConnctions = (ctx: CanvasRenderingContext2D) => {
+      for (let i = 0; i < particles.length; i++) {
+        const p1 = particles[i];
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < connectionDistance) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = `rgba(${blueStrokeBase}, ${1 - dist / connectionDistance})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+    };
+
+    const updateAndDrawParticles = (ctx: CanvasRenderingContext2D) => {
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+
+        if (p.vx > 0.5 || p.vx < -0.5 || p.vy > 0.5 || p.vy < -0.5) {
+          p.vx *= damping;
+          p.vy *= damping;
+        }
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+        const dx = p.x - mouseX;
+        const dy = p.y - mouseY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < mouseRadius) {
+          const angle = Math.atan2(dy, dx);
+          const force = (mouseRadius - dist) / mouseRadius;
+          p.vx += Math.cos(angle) * force * 0.5;
+          p.vy += Math.sin(angle) * force * 0.5;
+        }
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+      }
+    };
+    
     draw();
 
-    document.addEventListener("resize", resize);
+    window.addEventListener("resize", () => {
+      resize();
+    });
+
     return () => {
-      removeEventListener("resize", resize);
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full -z-10" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: -1,
+      }}
+    />
+  );
 };
 
-export default AnimatedBackground;
+export default AnimatedCanvas;
