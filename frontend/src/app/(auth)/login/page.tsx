@@ -12,7 +12,7 @@ export default function LogInPage() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col md:flex-row">
       {/*Login section*/}
-      <div className="w-full md:w-[50%] md:h-screen p-8 px-20">
+      <div className="w-full md:w-[50%] md:h-screen p-8 md:px-20 flex flex-col justify-center">
         <div className="flex flex-row justify-between items-center mb-10">
           <div className="flex items-center">
             <Link href={"/"} className="flex items-center gap-1">
@@ -86,9 +86,9 @@ export default function LogInPage() {
                 </div>
                 <Button
                   type="submit"
-                  className="bg-blue-500 text-white p-2 rounded-xl mt-4 w-full h-12 transition-all curser-pointer hover:bg-blue-600"
+                  className="bg-blue-500 text-white p-2 rounded-xl mt-4 w-full h-12 transition-all curser-pointer hover:bg-blue-600 group"
                 >
-                  Log In <ArrowRight className="ml-2 h-4 w-4 hover:transform-[translate(0px, 10px)] transition-all" />
+                  Log In <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               </div>
             </div>

@@ -43,3 +43,12 @@ html {
   background-color: rgba(0, 0, 0, 0.3);
   border-radius: 20px;
 }
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important; /* your input background */
+  -webkit-text-fill-color: #e0e0e0 !important; /* your input text color */
+  transition: background-color 5000s ease-in-out 0s !important; /* prevent flicker */
+}
