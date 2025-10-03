@@ -4,13 +4,72 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 
 type Step = "EMAIL" | "PASSWORD";
 
 export default function SignUpPage() {
   const [step, setStep] = useState<Step>("EMAIL");
   const [showPassword, setShowPassword] = useState<boolean>(false);
+
+  const [email, setEmail] = useState<string>("");
+  const [name, setName] = useState<string>("");
+  const [pass, setPass] = useState<string>("");
+
+  const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("http://localhost:8080/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name, pass }),
+      });
+
+      const data = await res.json();
+      console.log(data);
+      console.log(res);
+      if (!res.ok) throw new Error(data.message || "Something went wrong");
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const passwordStrength = () => {
+    if (!pass) return 0;
+    let strength = 0;
+    if (pass.length >= 8) strength += 1;
+    if (/[A-Z]/.test(pass)) strength += 1;
+    if (/[0-9]/.test(pass)) strength += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) strength += 1;
+    return strength;
+  };
+
+  const strengthText = () => {
+    const strength = passwordStrength();
+    switch (strength) {
+      case 0:
+        return "Very Weak";
+      case 1:
+        return "Weak";
+      case 2:
+        return "Fair";
+      case 3:
+        return "Strong";
+      case 4:
+        return "Very Strong";
+      default:
+        return "";
+    }
+  };
+
+  const strengthColor = () => {
+    const strength = passwordStrength();
+    if (strength === 0) return "bg-slate-700";
+    if (strength === 1) return "bg-red-500";
+    if (strength === 2) return "bg-yellow-500";
+    if (strength === 3) return "bg-blue-500";
+    return "bg-green-500";
+  };
 
   return (
     <div className="min-h-screen bg-black text-white md:flex md:flex-row flex flex-col">
@@ -88,6 +147,8 @@ export default function SignUpPage() {
                     <input
                       type="text"
                       id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       placeholder="John Wick"
                       className="bg-slate-900 border-slate-800 pl-10 h-12 focus-visible:ring-blue-500 w-full rounded-xl"
                       required
@@ -106,6 +167,8 @@ export default function SignUpPage() {
                       type="email"
                       id="email"
                       placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="bg-slate-900 border-slate-800 pl-10 h-12 focus-visible:ring-blue-500 w-full rounded-xl"
                       required
                     />
@@ -113,14 +176,17 @@ export default function SignUpPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-12 bg-blue-600 hover:bg-blue-500 transition-all rounded-xl group">
+              <Button
+                type="submit"
+                className="w-full h-12 bg-blue-600 hover:bg-blue-500 transition-all rounded-xl group"
+              >
                 <div className="flex items-center justify-center">
                   Continue <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>
               </Button>
             </form>
           ) : (
-            <form className="space-y-6">
+            <form className="space-y-6" onSubmit={handleSignup}>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label htmlFor="password" className="block text-slate-300">
@@ -134,6 +200,8 @@ export default function SignUpPage() {
                       id="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
+                      value={pass}
+                      onChange={(e) => setPass(e.target.value)}
                       className="bg-slate-900 border-slate-800 pl-10 pr-10 h-12 focus-visible:ring-blue-500 rounded-xl w-full"
                       required
                     />
@@ -146,18 +214,57 @@ export default function SignUpPage() {
                     </button>
                   </div>
                 </div>
+
+                {pass && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-400">Password strength</span>
+                      <span
+                        className={`text-sm ${
+                          passwordStrength() < 2
+                            ? "text-red-500"
+                            : passwordStrength() < 3
+                              ? "text-yellow-500"
+                              : passwordStrength() < 4
+                                ? "text-blue-500"
+                                : "text-green-500"
+                        }`}
+                      >
+                        {strengthText()}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-800 rounded-full">
+                      <div
+                        className={`h-full ${strengthColor()} rounded-full transition-all duration-300`}
+                        style={{ width: `${passwordStrength() * 25}%` }}
+                      ></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      <PasswordRequirements text="At least 8 characters" met={pass.length >= 8} />
+                      <PasswordRequirements text="At least 1 uppercase letter" met={/[A-Z]/.test(pass)} />
+                      <PasswordRequirements text="At least 1 number" met={/[0-9]/.test(pass)} />
+                      <PasswordRequirements text="At least 1 special character" met={/[^A-Za-z0-9]/.test(pass)} />
+                    </div>
+                  </div>
+                )}
               </div>
+
               <div className="flex justify-between items-center">
-                <Button className="w-[20%] h-12 rounded-xl bg-slate-900 border-slate-800 hover:bg-slate-800 group" onClick={() => setStep("EMAIL")}>
+                <Button
+                  className="w-[20%] h-12 rounded-xl bg-slate-900 border-slate-800 hover:bg-slate-800 group"
+                  onClick={() => setStep("EMAIL")}
+                >
                   <div className="flex items-center justify-center">
-                    <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                    {" "}Back
+                    <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" /> Back
                   </div>
                 </Button>
-                <Button type="submit" className="w-[78%] h-12 bg-blue-600 hover:bg-blue-500 transition-all rounded-xl group">
+                <Button
+                  type="submit"
+                  className="w-[78%] h-12 bg-blue-600 hover:bg-blue-500 transition-all rounded-xl group"
+                  disabled={passwordStrength() < 3}
+                >
                   <div className="flex items-center justify-center">
-                    Sign Up{" "}
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    Sign Up <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </div>
                 </Button>
               </div>
@@ -212,6 +319,19 @@ export default function SignUpPage() {
   );
 }
 
+function PasswordRequirements({ text, met }: { text: string; met: boolean }) {
+  return (
+    <div className="flex items-center space-x-2">
+      <div
+        className={`flex-shrink-0 rounded-full p-1 ${met ? "bg-green-500/20 text-green-400" : "bg-slate-500/20 text-slate-400"}`}
+      >
+        <Check className="h-4 w-4" />
+      </div>
+      <p className={`text-sm text-slate-400`}>{text}</p>
+    </div>
+  );
+}
+
 function FeaturePoint({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex items-start space-x-4">
@@ -227,5 +347,14 @@ function FeaturePoint({ title, description }: { title: string; description: stri
 }
 
 function Orbs() {
-  return <div></div>;
+  return (
+    <div className="relative w-full h-screen bg-black overflow-hidden">
+      {/* Glow orbs */}
+      <div className="absolute rounded-full bg-blue-500 opacity-30 blur-3xl animate-pulse-slow w-72 h-72 top-20 left-10"></div>
+      <div className="absolute rounded-full bg-blue-400 opacity-20 blur-2xl animate-pulse-slower w-56 h-56 top-60 left-1/3"></div>
+      <div className="absolute rounded-full bg-blue-600 opacity-25 blur-3xl animate-pulse w-80 h-80 top-1/4 left-2/3"></div>
+      <div className="absolute rounded-full bg-blue-500 opacity-15 blur-xl animate-pulse-slower w-48 h-48 bottom-1/4 right-20"></div>
+      <div className="absolute rounded-full bg-blue-400 opacity-20 blur-2xl animate-pulse w-64 h-64 bottom-20 right-40"></div>
+    </div>
+  );
 }

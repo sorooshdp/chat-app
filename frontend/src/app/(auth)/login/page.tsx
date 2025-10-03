@@ -148,7 +148,7 @@ export default function LogInPage() {
         </div>
         <div className="relative z-10 h-full flex flex-col justify-center items-center p-12">
           <div className="mb-8">
-            <Image src={"/nexus.png"} alt="nexus logo" width={40} height={40}/>
+            <Image src={"/nexus.png"} alt="nexus logo" width={40} height={40} />
           </div>
           <h1 className="text-4xl font-bold mb-4">Welcome Back</h1>
           <p className="text-xl text-blue-200 max-w-md text-center">
