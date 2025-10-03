@@ -423,13 +423,13 @@ export default function Home() {
         <footer className="text-amber-50 border-slate-700 border-t py-10">
           <div className="container mx-auto gap-4 text-center text-slate-400">
             <div className="flex justify-center gap-6 mb-6">
-              <Link href="" className="hover:text-amber-50 transition-colors">
+              <Link href="/terms" className="hover:text-amber-50 transition-colors">
                 Terms
               </Link>
-              <Link href="#" className="hover:text-amber-50 transition-colors">
+              <Link href="/privacy" className="hover:text-amber-50 transition-colors">
                 Privacy
               </Link>
-              <Link href="#" className="hover:text-amber-50 transition-colors">
+              <Link href="/contact" className="hover:text-amber-50 transition-colors">
                 Contact
               </Link>
             </div>

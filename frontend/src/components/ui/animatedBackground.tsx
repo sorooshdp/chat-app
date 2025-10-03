@@ -10,7 +10,6 @@ interface Particle {
   color: string;
 }
 
-const baseParticleCount = Math.min(80, Math.floor(window.innerWidth / 20));
 const particles: Particle[] = [];
 const blueShades = ["rgba(79, 139, 255, 0.8)", "rgba(59, 130, 246, 0.8)", "rgba(37, 99, 235, 0.8)"];
 const blueStrokeBase = "59, 130, 246";
@@ -28,6 +27,7 @@ const AnimatedCanvas = () => {
     if (!ctx) return;
 
     let animationFrameId: number;
+    const baseParticleCount = Math.min(80, Math.floor(window.innerWidth / 20));
 
     // Set canvas size to match window size
     const resize = () => {
@@ -128,7 +128,7 @@ const AnimatedCanvas = () => {
         ctx.fill();
       }
     };
-    
+
     draw();
 
     window.addEventListener("resize", () => {
