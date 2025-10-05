@@ -27,7 +27,7 @@ const AnimatedCanvas = () => {
     if (!ctx) return;
 
     let animationFrameId: number;
-    const baseParticleCount = Math.min(80, Math.floor(window.innerWidth / 20));
+    const baseParticleCount = Math.floor(window.innerWidth / 13);
 
     // Set canvas size to match window size
     const resize = () => {
@@ -48,6 +48,7 @@ const AnimatedCanvas = () => {
     window.addEventListener("mousemove", handleMouseMove);
 
     for (let i = 0; i < baseParticleCount; i++) {
+      if (particles.length >= baseParticleCount) break;
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
