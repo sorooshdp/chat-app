@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 type Step = "EMAIL" | "PASSWORD";
 
 export default function SignUpPage() {
+  const router = useRouter();
+
   const [step, setStep] = useState<Step>("EMAIL");
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
@@ -29,6 +32,11 @@ export default function SignUpPage() {
       console.log(data);
       console.log(res);
       if (!res.ok) throw new Error(data.message || "Something went wrong");
+
+      const token = data.token;
+
+      document.cookie = `token=${token}; SameSite=Strict; Expires=${new Date(Date.now() + 60 * 60 * 1000).toUTCString()}`;
+      router.push("/dashboard");
     } catch (e) {
       console.log(e);
     }
@@ -349,7 +357,6 @@ function FeaturePoint({ title, description }: { title: string; description: stri
 function Orbs() {
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
-      {/* Glow orbs */}
       <div className="absolute rounded-full bg-blue-500 opacity-30 blur-3xl animate-pulse-slow w-72 h-72 top-20 left-10"></div>
       <div className="absolute rounded-full bg-blue-400 opacity-20 blur-2xl animate-pulse-slower w-56 h-56 top-60 left-1/3"></div>
       <div className="absolute rounded-full bg-blue-600 opacity-25 blur-3xl animate-pulse w-80 h-80 top-1/4 left-2/3"></div>

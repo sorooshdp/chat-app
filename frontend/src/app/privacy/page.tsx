@@ -33,8 +33,8 @@ export default function PrivacyPage() {
             </div>
 
             <div className="prose prose-invert prose-blue max-w-none">
-              <p className="text-slate-300">
-                At NexusChat, we take your privacy seriously. Almost as seriously as we take our coffee orders. Here&apos;s
+              <p className="text-slate-300 text-justify">
+                At Nexus, we take your privacy seriously. Almost as seriously as we take our coffee orders. Here&apos;s
                 how we handle your data:
               </p>
 
@@ -61,14 +61,14 @@ export default function PrivacyPage() {
               </ul>
 
               <h2 className="text-xl font-bold mt-8 mb-4 text-white">3. Data Security</h2>
-              <p className="text-slate-300">
+              <p className="text-slate-300 text-justify">
                 We protect your data using state-of-the-art encryption, multiple security layers, and a very
                 intimidating guard dog named Pixel. While no method of transmission over the Internet is 100% secure
                 (shocking, we know), we strive to protect your personal information like it&apos;s the last slice of pizza.
               </p>
 
               <h2 className="text-xl font-bold mt-8 mb-4 text-white">4. Data Sharing</h2>
-              <p className="text-slate-300">
+              <p className="text-slate-300 text-justify">
                 We don&apos;t sell your data. We&apos;re not that desperate for money (yet). We may share data with:
               </p>
               <ul className="list-disc pl-6 text-slate-300 space-y-2 mt-4">
@@ -89,27 +89,27 @@ export default function PrivacyPage() {
               </ul>
 
               <h2 className="text-xl font-bold mt-8 mb-4 text-white">6. Cookies Policy</h2>
-              <p className="text-slate-300">
+              <p className="text-slate-300 text-justify">
                 We use cookies, but not the delicious kind. These digital cookies help us remember your preferences and
                 analyze traffic. You can control cookies through your browser settings, but disabling them might make
                 parts of NexusChat act as temperamental as a printer with low ink.
               </p>
 
               <h2 className="text-xl font-bold mt-8 mb-4 text-white">7. Children&apos;s Privacy</h2>
-              <p className="text-slate-300">
-                NexusChat is not intended for children under 13. If you&apos;re under 13, please go play outside or
+              <p className="text-slate-300 text-justify">
+                Nexus is not intended for children under 13. If you&apos;re under 13, please go play outside or
                 something. If we discover that a child under 13 has provided us with personal information, we will
                 delete it faster than a teenager deletes their browser history when their parent walks in.
               </p>
 
               <h2 className="text-xl font-bold mt-8 mb-4 text-white">8. Changes to This Policy</h2>
-              <p className="text-slate-300">
+              <p className="text-slate-300 text-justify">
                 We may update this policy occasionally. When we do, we&apos;ll notify you by changing the &apos;Last Updated&apos; date
                 below, sending a notification, or possibly hiring a skywriter if we&apos;re feeling fancy.
               </p>
 
               <h2 className="text-xl font-bold mt-8 mb-4 text-white">9. Contact Us</h2>
-              <p className="text-slate-300">
+              <p className="text-slate-300 text-justify">
                 Questions about this policy? Contact us at privacy@nexuschat.example.com. Our privacy team consists of
                 people who actually read terms and conditions for fun, so they&apos;ll be thrilled to hear from you.
               </p>
@@ -123,7 +123,7 @@ export default function PrivacyPage() {
 
         <footer className="border-t border-slate-800 py-8">
           <div className="container mx-auto px-4 text-center text-slate-400">
-            <p>© 2025 NexusChat. All rights reserved. We protect your data like it&apos;s our secret cookie recipe.</p>
+            <p>© 2025 Nexus. All rights reserved. We protect your data like it&apos;s our secret cookie recipe.</p>
           </div>
         </footer>
       </div>

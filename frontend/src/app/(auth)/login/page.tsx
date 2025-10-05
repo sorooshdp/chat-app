@@ -5,9 +5,43 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export default function LogInPage() {
+  const router = useRouter();
+
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [email, setEmail] = useState<string>("");
+  const [pass, setPass] = useState<string>("");
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("http://localhost:8080/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          pass,
+        }),
+      });
+
+      const data = await res.json();
+      console.log(data);
+
+      if (!res.ok) {
+        throw new Error(data.message || "Something went wrong");
+      }
+
+      const token = data.token;
+      document.cookie = `token=${token}; SameSite=Strict; Expires=${new Date(Date.now() + 60 * 60 * 1000).toUTCString()}`;
+      router.push("/dashboard");
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col md:flex-row">
@@ -31,7 +65,7 @@ export default function LogInPage() {
             <p className="text-slate-400">Enter your credentials to access your accout</p>
           </div>
 
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={handleLogin}>
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex flex-col">
@@ -45,6 +79,8 @@ export default function LogInPage() {
                     <input
                       type="email"
                       id="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
                       className="bg-slate-900 border-slate-800 pl-10 h-12 focus-visible:ring-blue-500 rounded-xl w-full"
                       autoComplete="email"
@@ -71,6 +107,8 @@ export default function LogInPage() {
                     <input
                       id="password"
                       type={showPassword ? "text" : "password"}
+                      value={pass}
+                      onChange={(e) => setPass(e.target.value)}
                       placeholder="••••••••"
                       className="bg-slate-900 border-slate-800 pl-10 pr-10 h-12 focus-visible:ring-blue-500 rounded-xl w-full"
                       required

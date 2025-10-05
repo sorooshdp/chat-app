@@ -30,13 +30,13 @@ export default function TermsPage() {
             <h1 className="text-3xl font-bold mb-6 text-white">Terms of Service</h1>
             <div className="prose prose-invert prose-blue max-w-none">
               <p className="text-slate-300">
-                Welcome to the NexusChat Terms of Service, the document that lawyers forced us to write but nobody
+                Welcome to the Nexus Terms of Service, the document that lawyers forced us to write but nobody
                 actually reads.
               </p>
 
               <h2 className="text-xl font-bold mt-8 mb-4 text-white">1. Acceptance of Terms</h2>
               <p className="text-slate-300">
-                By using NexusChat, you agree to these Terms of Service. If you don&apos;t agree, well, there&apos;s always
+                By using Nexus, you agree to these Terms of Service. If you don&apos;t agree, well, there&apos;s always
                 carrier pigeons or smoke signals as alternatives.
               </p>
 
@@ -82,13 +82,13 @@ export default function TermsPage() {
 
               <h2 className="text-xl font-bold mt-8 mb-4 text-white">7. Disclaimer of Warranties</h2>
               <p className="text-slate-300">
-                NexusChat is provided &quot;as is&quot; without warranties. Sometimes it works great, sometimes it
+                Nexus is provided &quot;as is&quot; without warranties. Sometimes it works great, sometimes it
                 doesn&apos;t. Kind of like that toaster you&apos;ve had since college.
               </p>
 
               <h2 className="text-xl font-bold mt-8 mb-4 text-white">8. Limitation of Liability</h2>
               <p className="text-slate-300">
-                We&apos;re not liable for any damages arising from your use of NexusChat, including but not limited to:
+                We&apos;re not liable for any damages arising from your use of Nexus, including but not limited to:
                 broken friendships due to misinterpreted texts, embarrassment from accidentally sending a message to the
                 wrong person, or carpal tunnel from typing too many lols.
               </p>
@@ -112,7 +112,7 @@ export default function TermsPage() {
 
         <footer className="border-t border-slate-800 py-8">
           <div className="container mx-auto px-4 text-center text-slate-400">
-            <p>© 2025 NexusChat. All rights reserved. Terms written by humans, not lawyers (can you tell?).</p>
+            <p>© 2025 Nexus. All rights reserved. Terms written by humans, not lawyers (can you tell?).</p>
           </div>
         </footer>
       </div>
