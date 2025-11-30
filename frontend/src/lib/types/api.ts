@@ -37,8 +37,9 @@ export interface ConversationWithDetails extends Pick<Conversation, "id" | "crea
 /**
  * API response for conversation list endpoint
  */
-export interface ConversationsResponse {
-  conversations: ConversationWithDetails[];
+export interface CreateConversationResponse {
+  conversationId: number;
+  conversation?: ConversationWithDetails; // Optional in case backend doesn't return it
 }
 
 /**

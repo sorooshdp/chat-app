@@ -3,7 +3,7 @@
 import { JSX, useState, useEffect, useCallback } from "react";
 import { Search, Menu, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { ConversationWithDetails, UserProfile } from '@/lib/types/api';
+import type { ConversationWithDetails, UserProfile, CreateConversationResponse } from "@/lib/types/api";
 import { ConversationItem } from "./conversation-item";
 import { UserSearchItem } from "./user-search-item";
 
@@ -16,12 +16,12 @@ function getDisplayName(conversation: ConversationWithDetails): string {
     return conversation.name;
   }
 
-  if (conversation.participants.length === 1 && conversation.participants[0].user.name) {
-    return conversation.participants[0].user.name;
+  const firstParticipant = conversation.participants[0];
+  if (conversation.participants.length === 1 && firstParticipant?.user.name) {
+    return firstParticipant.user.name;
   }
 
   const names = conversation.participants.map((p) => p.user.name).filter((name): name is string => name !== null);
-
   return names.length > 0 ? names.join(", ") : "Unknown";
 }
 
@@ -29,20 +29,16 @@ async function searchUsers(query: string, token: string): Promise<UserProfile[]>
   if (query.trim().length < 2) return [];
 
   const response = await fetch(`http://localhost:8080/api/users/search?q=${encodeURIComponent(query)}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (!response.ok) {
-    throw new Error("User search failed");
-  }
+  if (!response.ok) throw new Error("User search failed");
 
   const data = await response.json();
   return data.users;
 }
 
-async function createConversation(participantId: number, token: string): Promise<number> {
+async function createConversation(participantId: number, token: string): Promise<CreateConversationResponse> {
   const response = await fetch("http://localhost:8080/api/conversations", {
     method: "POST",
     headers: {
@@ -55,12 +51,8 @@ async function createConversation(participantId: number, token: string): Promise
     }),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to create conversation");
-  }
-
-  const data = await response.json();
-  return data.conversationId;
+  if (!response.ok) throw new Error("Failed to create conversation");
+  return response.json();
 }
 
 function getAuthToken(): string {
@@ -69,10 +61,7 @@ function getAuthToken(): string {
     .find((row) => row.startsWith("token="))
     ?.split("=")[1];
 
-  if (!token) {
-    throw new Error("No authentication token");
-  }
-
+  if (!token) throw new Error("No authentication token");
   return token;
 }
 
@@ -84,6 +73,11 @@ export function ConversationList({ conversations }: ConversationListProps): JSX.
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState<boolean>(false);
   const [localConversations, setLocalConversations] = useState<ConversationWithDetails[]>(conversations);
+
+  // Sync local state with incoming props (important for router.refresh())
+  useEffect(() => {
+    setLocalConversations(conversations);
+  }, [conversations]);
 
   const filteredConversations = localConversations.filter((conv) => {
     const displayName = getDisplayName(conv);
@@ -128,15 +122,20 @@ export function ConversationList({ conversations }: ConversationListProps): JSX.
       setIsCreatingConversation(true);
       try {
         const token = getAuthToken();
-        const conversationId = await createConversation(user.id, token);
+        const response = await createConversation(user.id, token);
 
-        // Refresh the page to fetch updated conversation list from server
-        router.refresh();
+        // Optimistic UI update: add conversation immediately if backend returns it
+        if (response.conversation) {
+          setLocalConversations((prev) => [response.conversation!, ...prev]);
+        }
 
         // Switch back to conversations mode and clear search
         setSearchMode("conversations");
         setSearchQuery("");
         setUserResults([]);
+
+        // Refresh to sync with server (backup in case backend doesn't return full object)
+        router.refresh();
       } catch (error) {
         console.error("Error creating conversation:", error);
         alert("Failed to start conversation. Please try again.");
@@ -242,7 +241,12 @@ export function ConversationList({ conversations }: ConversationListProps): JSX.
             ) : (
               <ul className="px-2">
                 {userResults.map((user) => (
-                  <UserSearchItem key={user.id} user={user} onSelect={handleUserSelect} disabled={isCreatingConversation} />
+                  <UserSearchItem
+                    key={user.id}
+                    user={user}
+                    onSelect={handleUserSelect}
+                    disabled={isCreatingConversation}
+                  />
                 ))}
               </ul>
             )}

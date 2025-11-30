@@ -55,7 +55,7 @@ const AnimatedCanvas = () => {
         vx: (Math.random() - 0.5) * 0.5,
         vy: (Math.random() - 0.5) * 0.5,
         size: Math.random() * 3 + 1,
-        color: blueShades[Math.floor(Math.random() * blueShades.length)],
+        color: blueShades[Math.floor(Math.random() * blueShades.length)] ?? blueShades[0]!,
       });
     }
 
@@ -80,8 +80,10 @@ const AnimatedCanvas = () => {
     const drawParticlesConnctions = (ctx: CanvasRenderingContext2D) => {
       for (let i = 0; i < particles.length; i++) {
         const p1 = particles[i];
+        if (!p1) continue;
         for (let j = i + 1; j < particles.length; j++) {
           const p2 = particles[j];
+          if (!p2) continue;
           const dx = p1.x - p2.x;
           const dy = p1.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
@@ -100,6 +102,7 @@ const AnimatedCanvas = () => {
     const updateAndDrawParticles = (ctx: CanvasRenderingContext2D) => {
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
+        if (!p) continue;
 
         if (p.vx > 0.5 || p.vx < -0.5 || p.vy > 0.5 || p.vy < -0.5) {
           p.vx *= damping;

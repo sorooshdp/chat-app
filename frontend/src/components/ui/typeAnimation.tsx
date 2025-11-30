@@ -38,8 +38,8 @@ export default function TypeAnimation({ speed, texts = QUOTES }: TypeAnimationPr
         if (textIndex >= texts.length) {
           setTextIndex(0);
         } else {
-          if (index < texts[textIndex].length) {
-            setOutput((prev) => prev + texts[textIndex].charAt(index));
+          if (index < texts[textIndex]!.length) {
+            setOutput((prev) => prev + texts[textIndex]!.charAt(index));
             setIndex((prev) => prev + 1);
           } else {
             clearTimeoutRef.current = setTimeout(() => {

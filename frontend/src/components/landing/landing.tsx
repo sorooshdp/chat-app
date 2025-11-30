@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Check,
   MessageSquare,
@@ -21,7 +19,6 @@ import Link from "next/link";
 import TypeAnimation from "@/components/ui/typeAnimation";
 import AnimatedBackground from "@/components/ui/animatedBackground";
 import Header from "./header";
-
 
 export default function Landing() {
   return (

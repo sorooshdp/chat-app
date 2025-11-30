@@ -23,9 +23,9 @@
     "noPropertyAccessFromIndexSignature": true,
 
     // Import/Module handling
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "verbatimModuleSyntax": false,
+    // "allowSyntheticDefaultImports": true,
+    // "forceConsistentCasingInFileNames": true,
+    // "verbatimModuleSyntax": false,
 
     // Build optimization
     "removeComments": true,
