@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import type { ConversationWithDetails } from '@/lib/types/conversations';
+import type { ConversationWithDetails } from '@/lib/types/api';
 import { JSX } from 'react/jsx-dev-runtime';
 
 interface ConversationItemProps {

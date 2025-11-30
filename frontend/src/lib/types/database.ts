@@ -1,3 +1,8 @@
+/**
+ * Core database entities
+ * These mirror the exact Supabase schema
+ */
+
 export interface User {
   id: number;
   created_at: string;
@@ -12,7 +17,7 @@ export interface User {
 export interface Conversation {
   id: number;
   created_at: string;
-  type: string | null;
+  type: "dm" | "group" | null;
   name: string | null;
 }
 
@@ -30,16 +35,4 @@ export interface Message {
   sender_id: number;
   content: string | null;
   conversation_id: number;
-}
-
-export interface ConversationWithDetails {
-  id: number;
-  created_at: string;
-  type: string | null;
-  name: string | null;
-  participants: Array<{
-    user: Pick<User, 'id' | 'name' | 'avatar_url' | 'status'>;
-  }>;
-  last_message: Pick<Message, 'content' | 'created_at' | 'sender_id'> | null;
-  unread_count: number;
 }

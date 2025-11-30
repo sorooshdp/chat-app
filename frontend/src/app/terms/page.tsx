@@ -1,4 +1,4 @@
-import Terms from "@/components/common/terms";
+import Terms from "@/components/landing/terms";
 
 export default function TermsPage() {
   return (
