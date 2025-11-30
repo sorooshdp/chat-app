@@ -9,6 +9,9 @@ import { UserSearchItem } from "./user-search-item";
 
 interface ConversationListProps {
   conversations: ConversationWithDetails[];
+  activeConversationId: number | null;
+  onConversationSelect: (conversationId: number) => void;
+  onConversationCreated: (conversation: ConversationWithDetails) => void;
 }
 
 function getDisplayName(conversation: ConversationWithDetails): string {
@@ -65,7 +68,12 @@ function getAuthToken(): string {
   return token;
 }
 
-export function ConversationList({ conversations }: ConversationListProps): JSX.Element {
+export function ConversationList({
+  conversations,
+  activeConversationId,
+  onConversationSelect,
+  onConversationCreated,
+}: ConversationListProps): JSX.Element {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchMode, setSearchMode] = useState<"conversations" | "users">("conversations");
@@ -124,17 +132,14 @@ export function ConversationList({ conversations }: ConversationListProps): JSX.
         const token = getAuthToken();
         const response = await createConversation(user.id, token);
 
-        // Optimistic UI update: add conversation immediately if backend returns it
         if (response.conversation) {
-          setLocalConversations((prev) => [response.conversation!, ...prev]);
+          onConversationCreated(response.conversation); // Use callback instead of local state
         }
 
-        // Switch back to conversations mode and clear search
         setSearchMode("conversations");
         setSearchQuery("");
         setUserResults([]);
 
-        // Refresh to sync with server (backup in case backend doesn't return full object)
         router.refresh();
       } catch (error) {
         console.error("Error creating conversation:", error);
@@ -143,7 +148,7 @@ export function ConversationList({ conversations }: ConversationListProps): JSX.
         setIsCreatingConversation(false);
       }
     },
-    [router]
+    [router, onConversationCreated]
   );
 
   const showingConversations = searchMode === "conversations";
@@ -219,13 +224,17 @@ export function ConversationList({ conversations }: ConversationListProps): JSX.
             ) : (
               <ul className="px-2">
                 {filteredConversations.map((conversation) => (
-                  <ConversationItem key={conversation.id} conversation={conversation} />
+                  <ConversationItem
+                    key={conversation.id}
+                    conversation={conversation}
+                    isActive={conversation.id === activeConversationId}
+                    onSelect={() => onConversationSelect(conversation.id)}
+                  />
                 ))}
               </ul>
             )}
           </>
         )}
-
         {showingUsers && (
           <>
             {isSearching ? (

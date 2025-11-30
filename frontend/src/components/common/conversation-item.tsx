@@ -6,6 +6,8 @@ import { JSX } from "react/jsx-dev-runtime";
 
 interface ConversationItemProps {
   conversation: ConversationWithDetails;
+  isActive?: boolean;
+  onSelect?: () => void;
 }
 
 function formatDistanceToNow(date: Date, options?: { addSuffix?: boolean }): string {
@@ -66,7 +68,7 @@ function formatTimestamp(timestamp: string): string {
   return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
 }
 
-export function ConversationItem({ conversation }: ConversationItemProps): JSX.Element {
+export function ConversationItem({ conversation, isActive = false, onSelect }: ConversationItemProps): JSX.Element {
   const displayName = getDisplayName(conversation);
   const avatarUrl = conversation.participants[0]?.user.avatar_url;
 
@@ -79,7 +81,10 @@ export function ConversationItem({ conversation }: ConversationItemProps): JSX.E
   return (
     <li>
       <button
-        className="w-full flex items-center py-3 px-2 rounded-lg hover:bg-blue-900 transition group"
+        onClick={onSelect}
+        className={`w-full flex items-center py-3 px-2 rounded-lg transition group ${
+          isActive ? "bg-blue-900" : "hover:bg-blue-900/50"
+        }`}
         aria-label={`Open conversation with ${displayName}`}
       >
         <div className="relative w-10 h-10 mr-3 flex-shrink-0">
