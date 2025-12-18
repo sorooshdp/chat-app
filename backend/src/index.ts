@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRouter from './routes/auth';
 import conversationRouter from './routes/conversations';
 import userRoutes from './routes/user';
+import messageRoutes from './routes/message';
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/conversations', conversationRouter);
 app.use('/api/users', userRoutes);
+app.use('/api/messages', messageRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

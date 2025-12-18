@@ -61,3 +61,35 @@ export interface CreateConversationResponse {
   conversationId: number;
   conversation?: ConversationWithDetails;
 }
+
+/**
+ * Message with sender details for chat display
+ */
+export interface MessageWithSender extends Message {
+  sender: {
+    id: number;
+    name: string | null;
+    avatar_url: string | null;
+  };
+}
+
+/**
+ * API response for fetching messages
+ */
+export interface MessagesResponse {
+  messages: MessageWithSender[];
+}
+
+/**
+ * API request for sending a message
+ */
+export interface SendMessageRequest {
+  content: string;
+}
+
+/**
+ * API response for sending a message
+ */
+export interface SendMessageResponse {
+  message: MessageWithSender;
+}
