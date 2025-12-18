@@ -91,7 +91,6 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
   const [messageInput, setMessageInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = (): void => {
@@ -156,7 +155,7 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
       sender_id: currentUserId,
       sender: {
         id: currentUserId,
-        name: currentUserName,
+        name: null,
         avatar_url: null,
       },
       status: "sending",
