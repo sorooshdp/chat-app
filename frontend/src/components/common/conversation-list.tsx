@@ -31,7 +31,7 @@ function getDisplayName(conversation: ConversationWithDetails): string {
 async function searchUsers(query: string, token: string): Promise<UserProfile[]> {
   if (query.trim().length < 2) return [];
 
-  const response = await fetch(`http://localhost:8080/api/users/search?q=${encodeURIComponent(query)}`, {
+  const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/users/search?q=${encodeURIComponent(query)}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -42,7 +42,7 @@ async function searchUsers(query: string, token: string): Promise<UserProfile[]>
 }
 
 async function createConversation(participantId: number, token: string): Promise<CreateConversationResponse> {
-  const response = await fetch("http://localhost:8080/api/conversations", {
+  const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/conversations`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

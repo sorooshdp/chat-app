@@ -167,17 +167,6 @@ npm run type-check   # TypeScript type checking
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key | Yes |
 | `NEXT_PUBLIC_API_URL` | Backend API URL | Yes |
 
-## 🚢 Deployment
-
-### Vercel (Recommended)
-
-1. Push your code to GitHub
-2. Import project in Vercel
-3. Add environment variables
-4. Deploy
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/chat-app)
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please follow these steps:
@@ -191,21 +180,3 @@ Contributions are welcome! Please follow these steps:
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👨‍💻 Developer
-
-**Soroosh (@sorooshdp)**
-- GitHub: [@sorooshdp](https://github.com/sorooshdp)
-- LinkedIn: [Your LinkedIn]
-
-## 🙏 Acknowledgments
-
-- [Next.js](https://nextjs.org/) - The React Framework
-- [Supabase](https://supabase.com/) - Open source Firebase alternative
-- [shadcn/ui](https://ui.shadcn.com/) - Beautiful UI components
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
-- [Lucide](https://lucide.dev/) - Beautiful icon library
-
----
-
-Built with ❤️ by Soroosh

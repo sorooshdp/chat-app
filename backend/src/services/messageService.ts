@@ -5,6 +5,7 @@ export interface MessageWithSender {
   content: string | null;
   created_at: string;
   sender_id: number;
+  conversation_id: number;
   sender: {
     id: number;
     name: string | null;
@@ -42,6 +43,7 @@ export class MessageService {
         content,
         created_at,
         sender_id,
+        conversation_id,
         sender:users!sender_id (
           id,
           name,
@@ -63,6 +65,7 @@ export class MessageService {
         content: msg.content,
         created_at: msg.created_at,
         sender_id: msg.sender_id,
+        conversation_id: msg.conversation_id,
         sender: senderData ?? { id: msg.sender_id, name: null, avatar_url: null },
       };
     });
@@ -102,6 +105,7 @@ export class MessageService {
         content,
         created_at,
         sender_id,
+        conversation_id,
         sender:users!sender_id (
           id,
           name,
@@ -120,6 +124,7 @@ export class MessageService {
       content: message.content,
       created_at: message.created_at,
       sender_id: message.sender_id,
+      conversation_id: message.conversation_id,
       sender: senderData ?? { id: message.sender_id, name: null, avatar_url: null },
     };
   }

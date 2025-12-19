@@ -11,6 +11,7 @@ import type {
   SendMessageResponse,
 } from "@/lib/types/api";
 import { getCurrentUserId, getAuthToken } from "@/lib/utils/auth";
+import { createClient } from "@/lib/supabase/server";
 
 interface ChatWindowProps {
   conversation: ConversationWithDetails | null;
@@ -53,7 +54,7 @@ function getDisplayName(conversation: ConversationWithDetails): string {
 }
 
 async function fetchMessages(conversationId: number, token: string): Promise<MessageWithSender[]> {
-  const response = await fetch(`http://localhost:8080/api/messages/${conversationId}`, {
+  const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/messages/${conversationId}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -68,7 +69,7 @@ async function fetchMessages(conversationId: number, token: string): Promise<Mes
 }
 
 async function sendMessage(conversationId: number, content: string, token: string): Promise<MessageWithSender> {
-  const response = await fetch(`http://localhost:8080/api/messages/${conversationId}`, {
+  const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/messages/${conversationId}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -132,6 +133,91 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
     };
 
     loadMessages();
+  }, [conversation]);
+
+  useEffect(() => {
+    if (!conversation) return;
+
+    const supabase = createClient();
+
+    // Subscribe to new messages in this conversation
+    const channel = supabase
+      .channel(`messages:${conversation.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
+        async (payload) => {
+          console.log("New message received:", payload);
+
+          // Fetch the full message with sender info
+          const { data: newMessage, error } = await supabase
+            .from("messages")
+            .select(
+              `
+              id,
+              content,
+              created_at,
+              sender_id,
+              conversation_id,
+              sender:users!sender_id (
+                id,
+                name,
+                avatar_url
+              )
+            `
+            )
+            .eq("id", payload.new['id'])
+            .single();
+
+          if (error) {
+            console.error("Error fetching new message details:", error);
+            return;
+          }
+
+          if (newMessage) {
+            // Handle sender data (Supabase may return it as an array)
+            const senderData = Array.isArray(newMessage.sender) ? newMessage.sender[0] : newMessage.sender;
+            const processedMessage: MessageWithSender = {
+              id: newMessage.id,
+              content: newMessage.content,
+              created_at: newMessage.created_at,
+              sender_id: newMessage.sender_id,
+              conversation_id: newMessage.conversation_id,
+              sender: senderData ?? { id: newMessage.sender_id, name: null, avatar_url: null },
+            };
+
+            // Check if message already exists (prevent duplicates from optimistic updates)
+            setMessages((prev) => {
+              const exists = prev.some((msg) => !isOptimistic(msg) && msg.id === processedMessage.id);
+
+              if (exists) return prev;
+
+              return [...prev, processedMessage];
+            });
+            
+            scrollToBottom();
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("Realtime subscription status:", status);
+        if (status === "SUBSCRIBED") {
+          console.log(`Successfully subscribed to conversation ${conversation.id}`);
+        }
+        if (status === "CHANNEL_ERROR") {
+          console.error("Failed to subscribe to realtime channel");
+        }
+      });
+
+    // Cleanup subscription on unmount or conversation change
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [conversation]);
 
   // Auto-scroll when new messages arrive
