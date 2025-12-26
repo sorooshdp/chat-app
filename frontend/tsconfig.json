@@ -23,8 +23,8 @@
     "noPropertyAccessFromIndexSignature": true,
 
     // Import/Module handling
-    // "allowSyntheticDefaultImports": true,
-    // "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
     // "verbatimModuleSyntax": false,
 
     // Build optimization
