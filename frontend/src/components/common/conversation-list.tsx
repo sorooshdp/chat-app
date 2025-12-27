@@ -12,6 +12,7 @@ interface ConversationListProps {
   activeConversationId: number | null;
   onConversationSelect: (conversationId: number) => void;
   onConversationCreated: (conversation: ConversationWithDetails) => void;
+  isHidden?: boolean;
 }
 
 function getDisplayName(conversation: ConversationWithDetails): string {
@@ -73,6 +74,7 @@ export function ConversationList({
   activeConversationId,
   onConversationSelect,
   onConversationCreated,
+  isHidden = false,
 }: ConversationListProps): JSX.Element {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -155,7 +157,9 @@ export function ConversationList({
   const showingUsers = searchMode === "users";
 
   return (
-    <aside className="relative w-80 min-w-[260px] max-w-xs bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out">
+    <aside className={`relative w-full md:w-80 md:min-w-[260px] md:max-w-xs bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out ${
+      isHidden ? "hidden md:flex" : "flex"
+    }`}>
       <button
         aria-label="Open Menu"
         className="absolute top-4 left-4 z-20 p-2 rounded-md hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-600"

@@ -16,7 +16,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose, links }: SidebarProps) {
-  // Prevent body scroll when sidebar is open (Performance: avoid layout thrashing)
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -28,7 +27,6 @@ export function Sidebar({ isOpen, onClose, links }: SidebarProps) {
     };
   }, [isOpen]);
 
-  // Close on Escape key (Accessibility)
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();

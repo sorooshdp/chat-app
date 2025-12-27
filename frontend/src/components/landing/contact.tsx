@@ -4,6 +4,10 @@ import { ChangeEvent, FormEvent, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Send, Mail, User, MessageCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
 import AnimatedBackground from "@/components/ui/animatedBackground";
 import Image from "next/image";
 
@@ -90,61 +94,61 @@ export default function Contact() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-4">
                     <div>
-                      <label htmlFor="name" className="block text-slate-300 font-semibold mb-1">
+                      <Label htmlFor="name" className="text-slate-300 font-semibold">
                         Your Name
-                      </label>
+                      </Label>
                       <div className="relative mt-1">
-                        <div className="absolute left-3 top-3 text-slate-400 pointer-events-none">
+                        <div className="absolute left-3 top-3 text-slate-400 pointer-events-none z-10">
                           <User className="h-5 w-5" />
                         </div>
-                        <input
+                        <Input
                           id="name"
                           name="name"
                           value={formState.name}
                           onChange={handleChange}
                           placeholder="John Doe"
-                          className="bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-white"
+                          className="bg-slate-900 border-slate-700 pl-10 text-white"
                           required
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="email" className="block text-slate-300 font-semibold mb-1">
+                      <Label htmlFor="email" className="text-slate-300 font-semibold">
                         Email Address
-                      </label>
+                      </Label>
                       <div className="relative mt-1">
-                        <div className="absolute left-3 top-3 text-slate-400 pointer-events-none">
+                        <div className="absolute left-3 top-3 text-slate-400 pointer-events-none z-10">
                           <Mail className="h-5 w-5" />
                         </div>
-                        <input
+                        <Input
                           id="email"
                           name="email"
                           type="email"
                           value={formState.email}
                           onChange={handleChange}
                           placeholder="you@example.com"
-                          className="bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-white"
+                          className="bg-slate-900 border-slate-700 pl-10 text-white"
                           required
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="message" className="block text-slate-300 font-semibold mb-1">
+                      <Label htmlFor="message" className="text-slate-300 font-semibold">
                         Message
-                      </label>
+                      </Label>
                       <div className="relative mt-1">
-                        <div className="absolute left-3 top-3 text-slate-400 pointer-events-none">
+                        <div className="absolute left-3 top-3 text-slate-400 pointer-events-none z-10">
                           <MessageCircle className="h-5 w-5" />
                         </div>
-                        <textarea
+                        <Textarea
                           id="message"
                           name="message"
                           value={formState.message}
                           onChange={handleChange}
                           placeholder="Write your message..."
-                          className="bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-3 py-2 min-h-[150px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-white"
+                          className="bg-slate-900 border-slate-700 pl-10 min-h-[150px] text-white"
                           required
                         />
                       </div>
@@ -177,17 +181,17 @@ export default function Contact() {
             )}
 
             <div className="mt-12 grid md:grid-cols-2 gap-6">
-              <div className="flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 text-center">
+              <Card className="flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-sm border-slate-800 p-6 text-center">
                 <Mail className="h-8 w-8 text-blue-400 mx-auto mb-3" />
                 <h3 className="font-bold text-white mb-2">Email Me</h3>
                 <p className="text-slate-400">soroosh.dadaship@gmail.com</p>
-              </div>
+              </Card>
 
-              <div className="flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 text-center">
+              <Card className="flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-sm border-slate-800 p-6 text-center">
                 <User className="h-8 w-8 text-green-400 mx-auto mb-3" />
                 <h3 className="font-bold text-white mb-2">Social Media</h3>
                 <p className="text-slate-400">@sorooshdp on all platforms</p>
-              </div>
+              </Card>
             </div>
           </div>
         </main>

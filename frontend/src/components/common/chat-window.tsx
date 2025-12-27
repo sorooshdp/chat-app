@@ -233,6 +233,13 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
     const content = messageInput.trim();
     const tempId = `temp-${Date.now()}`;
 
+    // Find current user's name from participants
+    const currentUserParticipant = conversation.participants.find(
+      (p) => p.user.id === currentUserId
+    );
+    const currentUserName = currentUserParticipant?.user.name || null;
+    const currentUserAvatar = currentUserParticipant?.user.avatar_url || null;
+
     // Create optimistic message
     const optimisticMessage: OptimisticMessage = {
       tempId,
@@ -241,8 +248,8 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
       sender_id: currentUserId,
       sender: {
         id: currentUserId,
-        name: null,
-        avatar_url: null,
+        name: currentUserName,
+        avatar_url: currentUserAvatar,
       },
       status: "sending",
     };
@@ -314,9 +321,9 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
   const avatarUrl = conversation.participants[0]?.user.avatar_url;
 
   return (
-    <main className="flex-1 flex flex-col bg-gradient-to-br from-black via-slate-900 to-blue-950">
+    <main className="flex-1 flex flex-col h-screen md:h-screen bg-gradient-to-br from-black via-slate-900 to-blue-950 overflow-hidden">
       {/* Mobile back button */}
-      <div className="md:hidden flex items-center p-4 border-b border-slate-800 bg-slate-900/90">
+      <div className="md:hidden flex items-center p-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md shrink-0">
         <button
           onClick={onClose}
           className="p-2 mr-3 rounded hover:bg-blue-800 text-slate-400 transition"
@@ -328,7 +335,7 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
       </div>
 
       {/* Desktop header */}
-      <header className="hidden md:flex items-center p-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-10">
+      <header className="hidden md:flex items-center p-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md shrink-0">
         {avatarUrl ? (
           <Image
             src={avatarUrl}
@@ -349,7 +356,7 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
       </header>
 
       {/* Messages section */}
-      <section className="flex-1 overflow-y-auto px-6 py-6">
+      <section className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -421,7 +428,7 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
       {/* Message input */}
       <form
         onSubmit={handleSendMessage}
-        className="flex items-center gap-2 p-4 border-t border-slate-800 bg-slate-900/90 backdrop-blur-md"
+        className="flex items-center gap-2 p-4 border-t border-slate-800 bg-slate-900/90 backdrop-blur-md shrink-0"
       >
         <input
           type="text"

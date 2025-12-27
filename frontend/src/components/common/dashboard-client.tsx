@@ -31,6 +31,7 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
         activeConversationId={activeConversationId}
         onConversationSelect={handleConversationSelect}
         onConversationCreated={handleConversationCreated}
+        isHidden={activeConversationId !== null}
       />
       <ChatWindow
         conversation={activeConversation}
