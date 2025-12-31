@@ -47,3 +47,13 @@ export function getAuthToken(): string {
 
   return token;
 }
+
+/**
+ * Set the auth token cookie with sane defaults
+ * @param token JWT token string
+ * @param maxAgeSeconds Optional max-age in seconds (default 3600 = 1h)
+ */
+export function setAuthToken(token: string, maxAgeSeconds: number = 3600): void {
+  const expires = new Date(Date.now() + maxAgeSeconds * 1000).toUTCString();
+  document.cookie = `token=${token}; Path=/; SameSite=Strict; Expires=${expires}`;
+}

@@ -2,15 +2,15 @@
 
 import { JSX, useState, useEffect, useRef, FormEvent } from "react";
 import Image from "next/image";
-import { ArrowLeft, Send, AlertCircle } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { ArrowLeft, Send, AlertCircle, Check, Loader2 } from "lucide-react";
 import type {
   ConversationWithDetails,
   MessageWithSender,
-  MessagesResponse,
-  SendMessageResponse,
 } from "@/lib/types/api";
 import { getCurrentUserId, getAuthToken } from "@/lib/utils/auth";
+import { getDisplayName } from "@/lib/utils/conversation";
+import { fetchMessages, sendMessage } from "@/lib/utils/api";
+import { formatTimestamp } from "@/lib/utils/date";
 import { createClient } from "@/lib/supabase/server";
 
 interface ChatWindowProps {
@@ -18,9 +18,10 @@ interface ChatWindowProps {
   onClose: () => void;
 }
 
-// Optimistic message type
-interface OptimisticMessage {
-  tempId: string;
+type MessageStatus = "sending" | "sent" | "failed";
+
+interface LocalMessage {
+  id: string;
   content: string;
   created_at: string;
   sender_id: number;
@@ -29,66 +30,24 @@ interface OptimisticMessage {
     name: string | null;
     avatar_url: string | null;
   };
-  status: "sending" | "failed";
+  status: MessageStatus;
+  isLocal: boolean;
 }
 
-type DisplayMessage = MessageWithSender | OptimisticMessage;
-
-function isOptimistic(message: DisplayMessage): message is OptimisticMessage {
-  return "tempId" in message;
-}
-
-function getDisplayName(conversation: ConversationWithDetails): string {
-  if (conversation.type === "group" && conversation.name) {
-    return conversation.name;
-  }
-
-  const firstParticipant = conversation.participants[0];
-  if (conversation.participants.length === 1 && firstParticipant?.user.name) {
-    return firstParticipant.user.name;
-  }
-
-  const names = conversation.participants.map((p) => p.user.name).filter((name): name is string => name !== null);
-
-  return names.length > 0 ? names.join(", ") : "Unknown";
-}
-
-async function fetchMessages(conversationId: number, token: string): Promise<MessageWithSender[]> {
-  const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/messages/${conversationId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch messages");
-  }
-
-  const data: MessagesResponse = await response.json();
-  return data.messages;
-}
-
-async function sendMessage(conversationId: number, content: string, token: string): Promise<MessageWithSender> {
-  const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/messages/${conversationId}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ content }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to send message");
-  }
-
-  const data: SendMessageResponse = await response.json();
-  return data.message;
+function toLocalMessage(msg: MessageWithSender): LocalMessage {
+  return {
+    id: msg.id.toString(),
+    content: msg.content ?? "",
+    created_at: msg.created_at,
+    sender_id: msg.sender_id,
+    sender: msg.sender,
+    status: "sent",
+    isLocal: false,
+  };
 }
 
 export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Element {
-  const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [messageInput, setMessageInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
@@ -123,7 +82,7 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
       try {
         const token = getAuthToken();
         const fetchedMessages = await fetchMessages(conversation.id, token);
-        setMessages(fetchedMessages);
+        setMessages(fetchedMessages.map(toLocalMessage));
         setTimeout(scrollToBottom, 100);
       } catch (error) {
         console.error("Error loading messages:", error);
@@ -151,57 +110,44 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
           table: "messages",
           filter: `conversation_id=eq.${conversation.id}`,
         },
-        async (payload) => {
+        (payload) => {
           console.log("New message received:", payload);
 
-          // Fetch the full message with sender info
-          const { data: newMessage, error } = await supabase
-            .from("messages")
-            .select(
-              `
-              id,
-              content,
-              created_at,
-              sender_id,
-              conversation_id,
-              sender:users!sender_id (
-                id,
-                name,
-                avatar_url
-              )
-            `
-            )
-            .eq("id", payload.new['id'])
-            .single();
+          const newMsg = payload.new as {
+            id: number;
+            content: string;
+            created_at: string;
+            sender_id: number;
+            conversation_id: number;
+          };
 
-          if (error) {
-            console.error("Error fetching new message details:", error);
-            return;
-          }
+          // Find sender info from conversation participants (already loaded)
+          const senderParticipant = conversation.participants.find(
+            (p) => p.user.id === newMsg.sender_id
+          );
 
-          if (newMessage) {
-            // Handle sender data (Supabase may return it as an array)
-            const senderData = Array.isArray(newMessage.sender) ? newMessage.sender[0] : newMessage.sender;
-            const processedMessage: MessageWithSender = {
-              id: newMessage.id,
-              content: newMessage.content,
-              created_at: newMessage.created_at,
-              sender_id: newMessage.sender_id,
-              conversation_id: newMessage.conversation_id,
-              sender: senderData ?? { id: newMessage.sender_id, name: null, avatar_url: null },
-            };
+          const processedMessage: LocalMessage = {
+            id: newMsg.id.toString(),
+            content: newMsg.content ?? "",
+            created_at: newMsg.created_at,
+            sender_id: newMsg.sender_id,
+            sender: senderParticipant?.user ?? {
+              id: newMsg.sender_id,
+              name: null,
+              avatar_url: null,
+            },
+            status: "sent",
+            isLocal: false,
+          };
 
-            // Check if message already exists (prevent duplicates from optimistic updates)
-            setMessages((prev) => {
-              const exists = prev.some((msg) => !isOptimistic(msg) && msg.id === processedMessage.id);
+          // Check if message already exists (prevent duplicates)
+          setMessages((prev) => {
+            const exists = prev.some((msg) => msg.id === processedMessage.id);
+            if (exists) return prev;
+            return [...prev, processedMessage];
+          });
 
-              if (exists) return prev;
-
-              return [...prev, processedMessage];
-            });
-            
-            scrollToBottom();
-          }
+          scrollToBottom();
         }
       )
       .subscribe((status) => {
@@ -233,57 +179,63 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
     const content = messageInput.trim();
     const tempId = `temp-${Date.now()}`;
 
-    // Find current user's name from participants
+    // Find current user's info from participants
     const currentUserParticipant = conversation.participants.find(
       (p) => p.user.id === currentUserId
     );
-    const currentUserName = currentUserParticipant?.user.name || null;
-    const currentUserAvatar = currentUserParticipant?.user.avatar_url || null;
 
-    // Create optimistic message
-    const optimisticMessage: OptimisticMessage = {
-      tempId,
+    // Create local message with "sending" status
+    const localMessage: LocalMessage = {
+      id: tempId,
       content,
       created_at: new Date().toISOString(),
       sender_id: currentUserId,
       sender: {
         id: currentUserId,
-        name: currentUserName,
-        avatar_url: currentUserAvatar,
+        name: currentUserParticipant?.user.name || null,
+        avatar_url: currentUserParticipant?.user.avatar_url || null,
       },
       status: "sending",
+      isLocal: true,
     };
 
-    // Clear input immediately
+    // Clear input and add message immediately
     setMessageInput("");
-
-    // Add optimistic message to UI
-    setMessages((prev) => [...prev, optimisticMessage]);
+    setMessages((prev) => [...prev, localMessage]);
 
     try {
       const token = getAuthToken();
       const sentMessage = await sendMessage(conversation.id, content, token);
 
-      // Replace optimistic message with real one
-      setMessages((prev) => prev.map((msg) => (isOptimistic(msg) && msg.tempId === tempId ? sentMessage : msg)));
+      // Update message to "sent" status with real ID
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempId
+            ? { ...toLocalMessage(sentMessage), isLocal: true }
+            : msg
+        )
+      );
     } catch (error) {
       console.error("Error sending message:", error);
 
-      // Mark message as failed
+      // Update message to "failed" status
       setMessages((prev) =>
-        prev.map((msg) => (isOptimistic(msg) && msg.tempId === tempId ? { ...msg, status: "failed" as const } : msg))
+        prev.map((msg) =>
+          msg.id === tempId ? { ...msg, status: "failed" as const } : msg
+        )
       );
     }
   };
 
-  const handleRetry = async (tempId: string): Promise<void> => {
-    const failedMessage = messages.find((msg) => isOptimistic(msg) && msg.tempId === tempId);
+  const handleRetry = async (messageId: string): Promise<void> => {
+    const failedMessage = messages.find((msg) => msg.id === messageId && msg.status === "failed");
+    if (!failedMessage || !conversation) return;
 
-    if (!failedMessage || !isOptimistic(failedMessage) || !conversation) return;
-
-    // Mark as sending again
+    // Update to sending status
     setMessages((prev) =>
-      prev.map((msg) => (isOptimistic(msg) && msg.tempId === tempId ? { ...msg, status: "sending" as const } : msg))
+      prev.map((msg) =>
+        msg.id === messageId ? { ...msg, status: "sending" as const } : msg
+      )
     );
 
     try {
@@ -291,19 +243,27 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
       const sentMessage = await sendMessage(conversation.id, failedMessage.content, token);
 
       // Replace with real message
-      setMessages((prev) => prev.map((msg) => (isOptimistic(msg) && msg.tempId === tempId ? sentMessage : msg)));
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId
+            ? { ...toLocalMessage(sentMessage), isLocal: true }
+            : msg
+        )
+      );
     } catch (error) {
       console.error("Error retrying message:", error);
 
-      // Mark as failed again
+      // Revert to failed status
       setMessages((prev) =>
-        prev.map((msg) => (isOptimistic(msg) && msg.tempId === tempId ? { ...msg, status: "failed" as const } : msg))
+        prev.map((msg) =>
+          msg.id === messageId ? { ...msg, status: "failed" as const } : msg
+        )
       );
     }
   };
 
-  const handleDeleteFailed = (tempId: string): void => {
-    setMessages((prev) => prev.filter((msg) => !isOptimistic(msg) || msg.tempId !== tempId));
+  const handleDeleteFailed = (messageId: string): void => {
+    setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
   };
 
   // Empty state when no conversation selected
@@ -369,13 +329,13 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
           <div className="space-y-4">
             {messages.map((message) => {
               const isOwnMessage = currentUserId !== null && message.sender_id === currentUserId;
-              const messageId = isOptimistic(message) ? message.tempId : message.id.toString();
-              const timestamp = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
-              const isFailed = isOptimistic(message) && message.status === "failed";
-              const isSending = isOptimistic(message) && message.status === "sending";
+              const timestamp = formatTimestamp(message.created_at);
+              const isSending = message.status === "sending";
+              const isSent = message.status === "sent";
+              const isFailed = message.status === "failed";
 
               return (
-                <div key={messageId} className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
+                <div key={message.id} className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
                   <div className="flex flex-col max-w-[70%]">
                     <div
                       className={`rounded-2xl px-4 py-2 shadow-lg ${
@@ -390,11 +350,16 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
                         <p className="text-xs text-slate-400 mb-1">{message.sender.name || "Unknown"}</p>
                       )}
                       <p className="break-words">{message.content}</p>
-                      <div className="flex items-center justify-between mt-1">
+                      <div className="flex items-center justify-end gap-2 mt-1">
                         <span className={`text-xs ${isOwnMessage ? "text-blue-200" : "text-slate-400"}`}>
                           {timestamp}
                         </span>
-                        {isSending && <span className="text-xs text-blue-300 ml-2">Sending...</span>}
+                        {isOwnMessage && isSending && (
+                          <Loader2 className="w-3 h-3 text-blue-300 animate-spin" />
+                        )}
+                        {isOwnMessage && isSent && (
+                          <Check className="w-3 h-3 text-blue-300" />
+                        )}
                       </div>
                     </div>
 
@@ -403,13 +368,13 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
                         <AlertCircle className="w-3 h-3" />
                         <span>Failed to send</span>
                         <button
-                          onClick={() => isOptimistic(message) && handleRetry(message.tempId)}
+                          onClick={() => handleRetry(message.id)}
                           className="text-blue-400 hover:underline"
                         >
                           Retry
                         </button>
                         <button
-                          onClick={() => isOptimistic(message) && handleDeleteFailed(message.tempId)}
+                          onClick={() => handleDeleteFailed(message.id)}
                           className="text-slate-400 hover:underline"
                         >
                           Delete

@@ -3,9 +3,12 @@
 import { JSX, useState, useEffect, useCallback } from "react";
 import { Search, Menu, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { ConversationWithDetails, UserProfile, CreateConversationResponse } from "@/lib/types/api";
+import type { ConversationWithDetails, UserProfile } from "@/lib/types/api";
 import { ConversationItem } from "./conversation-item";
 import { UserSearchItem } from "./user-search-item";
+import { getAuthToken } from "@/lib/utils/auth";
+import { getDisplayName } from "@/lib/utils/conversation";
+import { searchUsers, createConversation } from "@/lib/utils/api";
 
 interface ConversationListProps {
   conversations: ConversationWithDetails[];
@@ -13,60 +16,6 @@ interface ConversationListProps {
   onConversationSelect: (conversationId: number) => void;
   onConversationCreated: (conversation: ConversationWithDetails) => void;
   isHidden?: boolean;
-}
-
-function getDisplayName(conversation: ConversationWithDetails): string {
-  if (conversation.type === "group" && conversation.name) {
-    return conversation.name;
-  }
-
-  const firstParticipant = conversation.participants[0];
-  if (conversation.participants.length === 1 && firstParticipant?.user.name) {
-    return firstParticipant.user.name;
-  }
-
-  const names = conversation.participants.map((p) => p.user.name).filter((name): name is string => name !== null);
-  return names.length > 0 ? names.join(", ") : "Unknown";
-}
-
-async function searchUsers(query: string, token: string): Promise<UserProfile[]> {
-  if (query.trim().length < 2) return [];
-
-  const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/users/search?q=${encodeURIComponent(query)}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok) throw new Error("User search failed");
-
-  const data = await response.json();
-  return data.users;
-}
-
-async function createConversation(participantId: number, token: string): Promise<CreateConversationResponse> {
-  const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/conversations`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      participantIds: [participantId],
-      type: "dm",
-    }),
-  });
-
-  if (!response.ok) throw new Error("Failed to create conversation");
-  return response.json();
-}
-
-function getAuthToken(): string {
-  const token = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("token="))
-    ?.split("=")[1];
-
-  if (!token) throw new Error("No authentication token");
-  return token;
 }
 
 export function ConversationList({
@@ -91,10 +40,9 @@ export function ConversationList({
 
   const filteredConversations = localConversations.filter((conv) => {
     const displayName = getDisplayName(conv);
-    const lastMessageContent = conv.last_message?.content || "";
     const query = searchQuery.toLowerCase();
 
-    return displayName.toLowerCase().includes(query) || lastMessageContent.toLowerCase().includes(query);
+    return displayName.toLowerCase().includes(query);
   });
 
   const debouncedUserSearch = useCallback(
@@ -157,7 +105,7 @@ export function ConversationList({
   const showingUsers = searchMode === "users";
 
   return (
-    <aside className={`relative w-full md:w-80 md:min-w-[260px] md:max-w-xs bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out ${
+    <aside className={`relative w-full md:w-80 md:min-w-65 md:max-w-xs bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out ${
       isHidden ? "hidden md:flex" : "flex"
     }`}>
       <button

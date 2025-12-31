@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "StronGSecreTKey123";
 
-const router = Router();
+const router: Router = Router();
 
 router.post("/login", async (req: Request, res: Response) => {
   const { email, pass } = req.body;
@@ -85,6 +85,21 @@ router.post("/signup", async (req: Request, res: Response) => {
     res.status(201).json({ message: "User created", user, token });
   } catch (error) {
     res.status(500).json({ error: "Unexpected server error", details: error });
+  }
+});
+
+router.post("/verify", (req: Request, res: Response) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    res.status(200).json({ valid: true, payload: decoded });
+  } catch (error) {
+    res.status(401).json({ error: "Invalid or expired token" });
   }
 });
 

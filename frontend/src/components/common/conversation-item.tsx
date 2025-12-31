@@ -3,69 +3,13 @@
 import Image from "next/image";
 import type { ConversationWithDetails } from "@/lib/types/api";
 import { JSX } from "react/jsx-dev-runtime";
+import { getDisplayName } from "@/lib/utils/conversation";
+import { formatTimestamp } from "@/lib/utils/date";
 
 interface ConversationItemProps {
   conversation: ConversationWithDetails;
   isActive?: boolean;
   onSelect?: () => void;
-}
-
-function formatDistanceToNow(date: Date, options?: { addSuffix?: boolean }): string {
-  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-  const now = Date.now();
-  const seconds = Math.round((date.getTime() - now) / 1000);
-  const abs = Math.abs(seconds);
-
-  let value: number;
-  let unit: Intl.RelativeTimeFormatUnit;
-
-  if (abs < 60) {
-    value = seconds;
-    unit = "second";
-  } else if (abs < 3600) {
-    value = Math.round(seconds / 60);
-    unit = "minute";
-  } else if (abs < 86400) {
-    value = Math.round(seconds / 3600);
-    unit = "hour";
-  } else if (abs < 2629800) {
-    value = Math.round(seconds / 86400);
-    unit = "day";
-  } else if (abs < 31557600) {
-    value = Math.round(seconds / 2629800);
-    unit = "month";
-  } else {
-    value = Math.round(seconds / 31557600);
-    unit = "year";
-  }
-
-  const formatted = rtf.format(value, unit);
-
-  // date-fns uses addSuffix to include "ago" / "in", Intl already includes that.
-  // if addSuffix is explicitly false, strip common English prefixes/suffixes.
-  if (options?.addSuffix === false) {
-    return formatted.replace(/^in\s+/i, "").replace(/\s+ago$/i, "");
-  }
-
-  return formatted;
-}
-
-function getDisplayName(conversation: ConversationWithDetails): string {
-  if (conversation.type === "group" && conversation.name) {
-    return conversation.name;
-  }
-
-  if (conversation.participants.length === 1 && conversation.participants[0]!.user.name) {
-    return conversation.participants[0]!.user.name;
-  }
-
-  const names = conversation.participants.map((p) => p.user.name).filter((name): name is string => name !== null);
-
-  return names.length > 0 ? names.join(", ") : "Unknown";
-}
-
-function formatTimestamp(timestamp: string): string {
-  return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
 }
 
 export function ConversationItem({ conversation, isActive = false, onSelect }: ConversationItemProps): JSX.Element {

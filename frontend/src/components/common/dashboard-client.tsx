@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { JSX, useState } from 'react';
+import { JSX, useState } from "react";
 import { ConversationList } from "@/components/common/conversation-list";
 import { ChatWindow } from "@/components/common/chat-window";
-import type { ConversationWithDetails } from '@/lib/types/api';
+import type { ConversationWithDetails } from "@/lib/types/api";
 
 interface DashboardClientProps {
   initialConversations: ConversationWithDetails[];
@@ -13,14 +13,14 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
   const [conversations, setConversations] = useState<ConversationWithDetails[]>(initialConversations);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
 
-  const activeConversation = conversations.find(c => c.id === activeConversationId) || null;
+  const activeConversation = conversations.find((c) => c.id === activeConversationId) || null;
 
   const handleConversationSelect = (conversationId: number): void => {
     setActiveConversationId(conversationId);
   };
 
   const handleConversationCreated = (newConversation: ConversationWithDetails): void => {
-    setConversations(prev => [newConversation, ...prev]);
+    setConversations((prev) => [newConversation, ...prev]);
     setActiveConversationId(newConversation.id);
   };
 
@@ -33,10 +33,7 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
         onConversationCreated={handleConversationCreated}
         isHidden={activeConversationId !== null}
       />
-      <ChatWindow
-        conversation={activeConversation}
-        onClose={() => setActiveConversationId(null)}
-      />
+      <ChatWindow conversation={activeConversation} onClose={() => setActiveConversationId(null)} />
     </div>
   );
 }

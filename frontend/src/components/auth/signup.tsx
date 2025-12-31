@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Mail, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, Mail, User, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { setAuthToken } from "@/lib/utils/auth";
+import { getPasswordStrength, getStrengthText, getStrengthColor } from "@/lib/utils/password";
 
 type Step = "EMAIL" | "PASSWORD";
 
@@ -19,6 +21,7 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const [email, setEmail] = useState<string>("");
   const [name, setName] = useState<string>("");
@@ -41,50 +44,14 @@ export default function SignUp() {
       if (!res.ok) throw new Error(data.error || "Something went wrong");
 
       const token = data.token;
-      document.cookie = `token=${token}; SameSite=Strict; Expires=${new Date(Date.now() + 60 * 60 * 1000).toUTCString()}`;
-      router.push("/dashboard");
+      setAuthToken(token);
+      setSuccess("Account created successfully. Redirecting...");
+      setTimeout(() => router.push("/dashboard"), 600);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const passwordStrength = () => {
-    if (!pass) return 0;
-    let strength = 0;
-    if (pass.length >= 8) strength += 1;
-    if (/[A-Z]/.test(pass)) strength += 1;
-    if (/[0-9]/.test(pass)) strength += 1;
-    if (/[^A-Za-z0-9]/.test(pass)) strength += 1;
-    return strength;
-  };
-
-  const strengthText = () => {
-    const strength = passwordStrength();
-    switch (strength) {
-      case 0:
-        return "Very Weak";
-      case 1:
-        return "Weak";
-      case 2:
-        return "Fair";
-      case 3:
-        return "Strong";
-      case 4:
-        return "Very Strong";
-      default:
-        return "";
-    }
-  };
-
-  const strengthColor = () => {
-    const strength = passwordStrength();
-    if (strength === 0) return "bg-slate-700";
-    if (strength === 1) return "bg-red-500";
-    if (strength === 2) return "bg-yellow-500";
-    if (strength === 3) return "bg-blue-500";
-    return "bg-green-500";
   };
 
   return (
@@ -147,6 +114,13 @@ export default function SignUp() {
             {error && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-500/10 border border-green-500/50 text-green-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                <span>{success}</span>
               </div>
             )}
 
@@ -237,22 +211,22 @@ export default function SignUp() {
                       <span className="text-sm text-slate-400">Password strength</span>
                       <span
                         className={`text-sm ${
-                          passwordStrength() < 2
+                          getPasswordStrength(pass) < 2
                             ? "text-red-500"
-                            : passwordStrength() < 3
+                            : getPasswordStrength(pass) < 3
                               ? "text-yellow-500"
-                              : passwordStrength() < 4
+                              : getPasswordStrength(pass) < 4
                                 ? "text-blue-500"
                                 : "text-green-500"
                         }`}
                       >
-                        {strengthText()}
+                        {getStrengthText(pass)}
                       </span>
                     </div>
                     <div className="h-1.5 w-full bg-slate-800 rounded-full">
                       <div
-                        className={`h-full ${strengthColor()} rounded-full transition-all duration-300`}
-                        style={{ width: `${passwordStrength() * 25}%` }}
+                        className={`h-full ${getStrengthColor(pass)} rounded-full transition-all duration-300`}
+                        style={{ width: `${getPasswordStrength(pass) * 25}%` }}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-3">
@@ -277,7 +251,7 @@ export default function SignUp() {
                   <Button
                     type="submit"
                     className="flex-1 h-12 bg-blue-600 hover:bg-blue-500 transition-all rounded-xl group disabled:opacity-50"
-                    disabled={passwordStrength() < 3 || isLoading}
+                    disabled={getPasswordStrength(pass) < 3 || isLoading}
                   >
                     {isLoading ? "Creating account..." : "Sign Up"}
                     {!isLoading && <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />}

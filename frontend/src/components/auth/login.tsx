@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Lock, Mail, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
+import { setAuthToken } from "@/lib/utils/auth";
 
 export default function LogIn() {
   const router = useRouter();
@@ -18,11 +19,13 @@ export default function LogIn() {
   const [pass, setPass] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setSuccess(null);
     
     try {
       const res = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/auth/login`, {
@@ -43,8 +46,9 @@ export default function LogIn() {
       }
 
       const token = data.token;
-      document.cookie = `token=${token}; SameSite=Strict; Expires=${new Date(Date.now() + 60 * 60 * 1000).toUTCString()}`;
-      router.push("/dashboard");
+      setAuthToken(token);
+      setSuccess("Login successful. Redirecting...");
+      setTimeout(() => router.push("/dashboard"), 600);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -78,6 +82,13 @@ export default function LogIn() {
             {error && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-500/10 border border-green-500/50 text-green-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                <span>{success}</span>
               </div>
             )}
 

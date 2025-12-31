@@ -24,6 +24,7 @@ export default async function Dashboard(): Promise<JSX.Element> {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
 
+  // Middleware already protects this route, so token should always exist here
   if (!token) {
     redirect("/login");
   }
