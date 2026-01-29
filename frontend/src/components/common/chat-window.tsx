@@ -11,7 +11,13 @@ import { getCurrentUserId, getAuthToken } from "@/lib/utils/auth";
 import { getDisplayName } from "@/lib/utils/conversation";
 import { fetchMessages, sendMessage } from "@/lib/utils/api";
 import { formatTimestamp } from "@/lib/utils/date";
-import { createClient } from "@/lib/supabase/server";
+import {
+  connectSocket,
+  joinConversation,
+  leaveConversation,
+  onNewMessage,
+  SocketMessage,
+} from "@/lib/socket";
 
 interface ChatWindowProps {
   conversation: ConversationWithDetails | null;
@@ -94,77 +100,75 @@ export function ChatWindow({ conversation, onClose }: ChatWindowProps): JSX.Elem
     loadMessages();
   }, [conversation]);
 
+  // Socket.IO connection and message subscription
   useEffect(() => {
-    if (!conversation) return;
+    if (!conversation || currentUserId === null) return;
 
-    const supabase = createClient();
+    // Connect to socket and join conversation room
+    try {
+      connectSocket();
+      joinConversation(conversation.id);
+    } catch (error) {
+      console.error('Failed to connect socket:', error);
+      return;
+    }
 
-    // Subscribe to new messages in this conversation
-    const channel = supabase
-      .channel(`messages:${conversation.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversation.id}`,
+    // Subscribe to new messages
+    const unsubscribe = onNewMessage((newMsg: SocketMessage) => {
+      console.log('New message received via Socket.IO:', newMsg);
+
+      // Find sender info from conversation participants (already loaded)
+      const senderParticipant = conversation.participants.find(
+        (p) => p.user.id === newMsg.sender_id
+      );
+
+      const processedMessage: LocalMessage = {
+        id: newMsg.id.toString(),
+        content: newMsg.content ?? "",
+        created_at: newMsg.created_at,
+        sender_id: newMsg.sender_id,
+        sender: senderParticipant?.user ?? {
+          id: newMsg.sender_id,
+          name: newMsg.sender.name,
+          avatar_url: newMsg.sender.avatar_url,
         },
-        (payload) => {
-          console.log("New message received:", payload);
+        status: "sent",
+        isLocal: false,
+      };
 
-          const newMsg = payload.new as {
-            id: number;
-            content: string;
-            created_at: string;
-            sender_id: number;
-            conversation_id: number;
-          };
+      // Check if message already exists (prevent duplicates from optimistic updates)
+      setMessages((prev) => {
+        // Check for exact ID match first
+        const existsById = prev.some((msg) => msg.id === processedMessage.id);
+        if (existsById) return prev;
 
-          // Find sender info from conversation participants (already loaded)
-          const senderParticipant = conversation.participants.find(
-            (p) => p.user.id === newMsg.sender_id
-          );
+        // Check for local message that matches this one (same sender, similar timing)
+        const localMessageIndex = prev.findIndex(
+          (msg) =>
+            msg.isLocal &&
+            msg.sender_id === processedMessage.sender_id &&
+            msg.content === processedMessage.content
+        );
 
-          const processedMessage: LocalMessage = {
-            id: newMsg.id.toString(),
-            content: newMsg.content ?? "",
-            created_at: newMsg.created_at,
-            sender_id: newMsg.sender_id,
-            sender: senderParticipant?.user ?? {
-              id: newMsg.sender_id,
-              name: null,
-              avatar_url: null,
-            },
-            status: "sent",
-            isLocal: false,
-          };
-
-          // Check if message already exists (prevent duplicates)
-          setMessages((prev) => {
-            const exists = prev.some((msg) => msg.id === processedMessage.id);
-            if (exists) return prev;
-            return [...prev, processedMessage];
-          });
-
-          scrollToBottom();
+        if (localMessageIndex !== -1) {
+          // Replace local message with server message
+          const updated = [...prev];
+          updated[localMessageIndex] = processedMessage;
+          return updated;
         }
-      )
-      .subscribe((status) => {
-        console.log("Realtime subscription status:", status);
-        if (status === "SUBSCRIBED") {
-          console.log(`Successfully subscribed to conversation ${conversation.id}`);
-        }
-        if (status === "CHANNEL_ERROR") {
-          console.error("Failed to subscribe to realtime channel");
-        }
+
+        return [...prev, processedMessage];
       });
+
+      scrollToBottom();
+    });
 
     // Cleanup subscription on unmount or conversation change
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribe();
+      leaveConversation(conversation.id);
     };
-  }, [conversation]);
+  }, [conversation, currentUserId]);
 
   // Auto-scroll when new messages arrive
   useEffect(() => {

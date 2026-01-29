@@ -6,7 +6,7 @@ import type {
   MessageWithSender,
 } from "@/lib/types/api";
 
-const API_URL = process.env["NEXT_PUBLIC_API_URL"];
+const API_URL = process.env["NEXT_PUBLIC_API_URL"] || "http://localhost:3000";
 
 /**
  * Search users by query string

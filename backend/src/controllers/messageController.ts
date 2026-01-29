@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { MessageService } from '../services/messageService';
+import { emitNewMessage, emitConversationListUpdate } from '../socket';
 
 export class MessageController {
   static async getMessages(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -73,6 +74,17 @@ export class MessageController {
         req.user.id,
         content.trim()
       );
+
+      // Emit the message to all connected clients in the conversation room
+      emitNewMessage(conversationId, message);
+
+      // Emit conversation list update to all participants (for sidebar updates)
+      const participantIds = await MessageService.getConversationParticipantIds(conversationId);
+      emitConversationListUpdate(participantIds, conversationId, {
+        content: message.content,
+        created_at: message.created_at,
+        sender_id: message.sender_id,
+      });
 
       res.status(201).json({ message });
     } catch (error) {

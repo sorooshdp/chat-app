@@ -128,4 +128,21 @@ export class MessageService {
       sender: senderData ?? { id: message.sender_id, name: null, avatar_url: null },
     };
   }
+
+  /**
+   * Get all participant user IDs for a conversation
+   */
+  static async getConversationParticipantIds(conversationId: number): Promise<number[]> {
+    const { data: participants, error } = await supabase
+      .from('conversation_participants')
+      .select('user_id')
+      .eq('conversation_id', conversationId);
+
+    if (error) {
+      console.error('Failed to get participants:', error);
+      return [];
+    }
+
+    return participants?.map(p => p.user_id) || [];
+  }
 }

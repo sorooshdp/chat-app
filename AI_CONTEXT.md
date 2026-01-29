@@ -2,7 +2,7 @@
 
 **Last Updated:** December 28, 2025  
 **Project Type:** Full-stack real-time chat application  
-**Architecture:** Next.js 15 (App Router) + Express 5 + Supabase (PostgreSQL)
+**Architecture:** Next.js 15 (App Router) + Express 5 + Supabase (PostgreSQL) + Socket.IO
 
 ---
 
@@ -13,7 +13,7 @@ Nexus is a real-time messaging platform built with modern web technologies. User
 ### Key Features
 - User authentication (JWT-based)
 - User search and discovery
-- Real-time messaging via Supabase Realtime
+- Real-time messaging via Socket.IO (JWT-authenticated WebSocket)
 - Optimistic UI updates
 - Responsive design (mobile-first)
 - Conversation management
@@ -35,7 +35,7 @@ Nexus is a real-time messaging platform built with modern web technologies. User
 ### Prohibited Patterns
 - ❌ `any` types without explicit justification
 - ❌ Inline business logic in components
-- ❌ Direct database calls from frontend (except Realtime subscriptions)
+- ❌ Direct database calls from frontend
 - ❌ Unused imports or dead code
 - ❌ Unhandled promise rejections
 
@@ -53,7 +53,8 @@ Nexus is a real-time messaging platform built with modern web technologies. User
   "ui-components": "Shadcn UI (Radix primitives)",
   "icons": "lucide-react",
   "date-formatting": "date-fns",
-  "http-client": "Native fetch API"
+  "http-client": "Native fetch API",
+  "realtime": "socket.io-client"
 }
 ```
 
@@ -65,13 +66,14 @@ Nexus is a real-time messaging platform built with modern web technologies. User
   "database": "Supabase (PostgreSQL)",
   "authentication": "JWT (jsonwebtoken)",
   "data-access": "@supabase/supabase-js v2 (service role)",
-  "middleware": "cors, express.json()"
+  "middleware": "cors, express.json()",
+  "realtime": "socket.io (JWT-authenticated WebSocket)"
 }
 ```
 
 ### Infrastructure
 - **Database**: Supabase hosted PostgreSQL
-- **Real-time**: Supabase Realtime (WebSocket)
+- **Real-time**: Socket.IO (backend) with JWT authentication
 - **Deployment**: TBD
 - **Environment**: Node.js 20+
 
@@ -352,51 +354,54 @@ const handleAction = async () => {
 };
 ```
 
-### Supabase Realtime Subscription
-```
+### Socket.IO Subscription
+```typescript
 useEffect(() => {
-  if (!resourceId) return;
+  if (!conversation || currentUserId === null) return;
 
-  const supabase = createClient();
-  const channel = supabase
-    .channel(`table:column=eq.${resourceId}`)
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'table_name',
-      filter: `column=eq.${resourceId}`,
-    }, (payload) => {
-      // Handle new data
-    })
-    .subscribe();
+  // Connect to socket and join conversation room
+  try {
+    connectSocket();
+    joinConversation(conversation.id);
+  } catch (error) {
+    console.error('Failed to connect socket:', error);
+    return;
+  }
+
+  // Subscribe to new messages
+  const unsubscribe = onNewMessage((newMsg: SocketMessage) => {
+    // Handle new message
+    setMessages((prev) => {
+      const exists = prev.some((msg) => msg.id === newMsg.id.toString());
+      if (exists) return prev;
+      return [...prev, processMessage(newMsg)];
+    });
+  });
 
   return () => {
-    supabase.removeChannel(channel);
+    unsubscribe();
+    leaveConversation(conversation.id);
   };
-}, [resourceId]);
+}, [conversation, currentUserId]);
 ```
 
 ---
 
 ## 12. Real-time Features
 
-### Supabase Configuration Required
-1. Enable Realtime replication: `ALTER PUBLICATION supabase_realtime ADD TABLE messages;`
-2. Enable RLS: `ALTER TABLE messages ENABLE ROW LEVEL SECURITY;`
-3. Create policies for SELECT and INSERT
+### Socket.IO Configuration
+The backend uses Socket.IO with JWT authentication for secure real-time messaging.
 
-### Client Setup
-```
-// lib/supabase/client.ts
-import { createBrowserClient } from '@supabase/ssr';
+**Backend Setup (`backend/src/socket/index.ts`):**
+- JWT authentication middleware validates tokens before allowing connections
+- Users join conversation rooms via `join:conversation` event
+- New messages are broadcast to room via `message:new` event
+- Supports typing indicators (`typing:start`, `typing:stop`)
 
-export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
-```
+**Frontend Setup (`frontend/src/lib/socket.ts`):**
+- Singleton socket connection with reconnection handling
+- Room-based message subscriptions
+- Helper functions: `connectSocket`, `joinConversation`, `leaveConversation`, `onNewMessage`
 
 ---
 
@@ -416,6 +421,8 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbG...
 JWT_SECRET=your-secret-key
 # Default is 3000 in code; set if you want a custom port
 PORT=3000
+# Frontend URL for CORS and Socket.IO (defaults to http://localhost:3001)
+FRONTEND_URL=http://localhost:3001
 ```
 
 ---
@@ -539,14 +546,15 @@ npm run dev
 ### Why Express Backend?
 - Full control over business logic
 - Prevents direct database exposure
-- Easier to add WebSocket/Socket.io later
+- Integrated Socket.IO for real-time messaging
 - Can add rate limiting, caching, etc.
 
-### Why Supabase Realtime over WebSocket?
-- Native PostgreSQL integration
-- Automatic connection management
-- No separate WebSocket server needed
-- Can upgrade to custom WebSocket later if needed
+### Why Socket.IO over Supabase Realtime?
+- JWT-authenticated connections (more secure)
+- No exposed anon key on frontend
+- Full control over event handling
+- Room-based subscriptions for efficient message routing
+- Typing indicators and presence features built-in
 
 ### Why Optimistic Updates?
 - Instant user feedback
