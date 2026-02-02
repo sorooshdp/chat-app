@@ -36,7 +36,7 @@ export default function Landing() {
 
         <main>
           {/* Hero */}
-          <div className="container flex items-center justify-center mx-auto px-4 py-20 min-h-[100vh]">
+          <div className="container flex items-center justify-center mx-auto px-4 py-20 min-h-screen">
             <TypeAnimation speed={50} />
           </div>
 
@@ -192,23 +192,23 @@ export default function Landing() {
 
                   <ul className="space-y-4 mb-8">
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">5 chats (we know you don&apos;t have more friends anyway)</span>
                     </li>
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">Basic messaging (text only, like it&apos;s 1999)</span>
                     </li>
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">1GB storage (approximately 3 selfies in 2025)</span>
                     </li>
                     <li className="flex items-start">
-                      <X className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <X className="h-5 w-5 text-red-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">Ads for things you just talked about (spooky!)</span>
                     </li>
                     <li className="flex items-start">
-                      <X className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <X className="h-5 w-5 text-red-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">Support (you&apos;re on your own, buddy)</span>
                     </li>
                   </ul>
@@ -233,23 +233,23 @@ export default function Landing() {
 
                   <ul className="space-y-4 mb-8">
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">Unlimited chats (go wild, social butterfly!)</span>
                     </li>
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">All messaging features (GIFs, voice, video, the works)</span>
                     </li>
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">50GB storage (hoard those memes like a digital dragon)</span>
                     </li>
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">No ads (we respect you too much to spy on you)</span>
                     </li>
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">Priority support (we&apos;ll pretend to care)</span>
                     </li>
                   </ul>
@@ -274,23 +274,23 @@ export default function Landing() {
 
                   <ul className="space-y-4 mb-8">
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">Everything in Actually Good, plus bragging rights</span>
                     </li>
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">Custom emoji maker (for your weird inside jokes)</span>
                     </li>
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">500GB storage (digital hoarding enabler)</span>
                     </li>
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">VIP support (we&apos;ll actually care about your problems)</span>
                     </li>
                     <li className="flex items-start">
-                      <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <Check className="h-5 w-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-slate-300">A digital trophy that does absolutely nothing</span>
                     </li>
                   </ul>
@@ -331,7 +331,7 @@ export default function Landing() {
             <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-8 max-w-4xl mx-auto mb-16">
               <div className="space-y-8">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-1">
+                  <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 mt-1">
                     <Rocket className="w-6 h-6 text-blue-400" />
                   </div>
                   <div>
@@ -344,7 +344,7 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-1">
+                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0 mt-1">
                     <MessageSquare className="w-6 h-6 text-purple-400" />
                   </div>
                   <div>
@@ -357,7 +357,7 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-1">
+                  <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center shrink-0 mt-1">
                     <Users className="w-6 h-6 text-green-400" />
                   </div>
                   <div>
@@ -376,7 +376,7 @@ export default function Landing() {
               <div className="bg-slate-900/50 border border-slate-800 backdrop-blur-sm rounded-xl p-6 hover:border-blue-500/50 transition-colors">
                 <div className="flex flex-col mb-4">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="flex items-center justify-center w-10 h-10 bg-amber-300 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 font-bold">
+                    <div className="flex items-center justify-center w-10 h-10 bg-amber-300 rounded-full bg-linear-to-br from-blue-500 to-purple-500 font-bold">
                       J
                     </div>
                     <div>
@@ -397,7 +397,7 @@ export default function Landing() {
               <div className="bg-slate-900/50 border border-slate-800 backdrop-blur-sm rounded-xl p-6 hover:border-purple-500/50 transition-colors">
                 <div className="flex flex-col mb-4">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="flex items-center justify-center w-10 h-10 bg-amber-300 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 font-bold">
+                    <div className="flex items-center justify-center w-10 h-10 bg-amber-300 rounded-full bg-linear-to-br from-purple-500 to-pink-500 font-bold">
                       B
                     </div>
                     <div>
@@ -418,7 +418,7 @@ export default function Landing() {
               <div className="bg-slate-900/50 border border-slate-800 backdrop-blur-sm rounded-xl p-6 hover:border-green-500/50 transition-colors">
                 <div className="flex flex-col mb-4">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="flex items-center justify-center w-10 h-10 bg-amber-300 rounded-full bg-gradient-to-br from-green-500 to-teal-5000 font-bold">
+                    <div className="flex items-center justify-center w-10 h-10 bg-amber-300 rounded-full bg-linear-to-br from-green-500 to-teal-500 font-bold">
                       M
                     </div>
                     <div>
@@ -439,7 +439,7 @@ export default function Landing() {
           </section>
         </main>
 
-        <footer className="text-amber-50 border-slate-700 border-t py-10">
+        <footer className="text-amber-50 border-t border-white/10 py-10 bg-white/5 backdrop-blur-md">
           <div className="container mx-auto gap-4 text-center text-slate-400">
             <div className="flex justify-center gap-6 mb-6">
               <Link href="/terms" className="hover:text-amber-50 transition-colors">

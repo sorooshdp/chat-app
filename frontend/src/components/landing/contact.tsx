@@ -148,7 +148,7 @@ export default function Contact() {
                           value={formState.message}
                           onChange={handleChange}
                           placeholder="Write your message..."
-                          className="bg-slate-900 border-slate-700 pl-10 min-h-[150px] text-white"
+                          className="bg-slate-900 border-slate-700 pl-10 min-h-37.5 text-white"
                           required
                         />
                       </div>
@@ -196,7 +196,7 @@ export default function Contact() {
           </div>
         </main>
 
-        <footer className="border-t border-slate-800 py-8">
+        <footer className="border-t border-white/10 py-8 bg-white/5 backdrop-blur-md">
           <div className="container mx-auto px-4 text-center text-slate-400">
             <p>© 2025 Soroosh — Frontend Developer Portfolio</p>
           </div>

@@ -121,7 +121,7 @@ export default function Privacy() {
           </div>
         </main>
 
-        <footer className="border-t border-slate-800 py-8">
+        <footer className="border-t border-white/10 py-8 bg-white/5 backdrop-blur-md">
           <div className="container mx-auto px-4 text-center text-slate-400">
             <p>© 2025 Nexus. All rights reserved. We protect your data like it&apos;s our secret cookie recipe.</p>
           </div>
