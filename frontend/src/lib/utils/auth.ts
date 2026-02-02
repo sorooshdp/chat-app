@@ -55,5 +55,14 @@ export function getAuthToken(): string {
  */
 export function setAuthToken(token: string, maxAgeSeconds: number = 3600): void {
   const expires = new Date(Date.now() + maxAgeSeconds * 1000).toUTCString();
-  document.cookie = `token=${token}; Path=/; SameSite=Strict; Expires=${expires}`;
+  // Add Secure flag when running over HTTPS (production)
+  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `token=${token}; Path=/; SameSite=Strict; Expires=${expires}${secureFlag}`;
+}
+
+/**
+ * Clear the auth token cookie (logout)
+ */
+export function clearAuthToken(): void {
+  document.cookie = "token=; Path=/; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
 }

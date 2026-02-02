@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { getAuthToken } from './utils/auth';
+import type { ConversationWithDetails } from './types/api';
 
 // Socket instance singleton
 let socket: Socket | null = null;
@@ -23,6 +24,14 @@ export interface SocketMessage {
 export interface TypingEvent {
   conversationId: number;
   userId: number;
+}
+
+export interface PresenceEvent {
+  userId: number;
+}
+
+export interface PresenceListEvent {
+  onlineUserIds: number[];
 }
 
 /**
@@ -218,7 +227,7 @@ export function onConversationUpdate(callback: (event: ConversationUpdateEvent) 
 /**
  * Subscribe to new conversation events (when someone creates a conversation with you)
  */
-export function onNewConversation(callback: (conversation: unknown) => void): () => void {
+export function onNewConversation(callback: (conversation: ConversationWithDetails) => void): () => void {
   if (!socket) {
     console.warn('Socket not initialized');
     return () => {};
@@ -228,5 +237,80 @@ export function onNewConversation(callback: (conversation: unknown) => void): ()
 
   return () => {
     socket?.off('conversation:new', callback);
+  };
+}
+
+/**
+ * Subscribe to presence online events
+ */
+export function onPresenceOnline(callback: (event: PresenceEvent) => void): () => void {
+  if (!socket) {
+    return () => {};
+  }
+
+  socket.on('presence:online', callback);
+
+  return () => {
+    socket?.off('presence:online', callback);
+  };
+}
+
+/**
+ * Subscribe to presence offline events
+ */
+export function onPresenceOffline(callback: (event: PresenceEvent) => void): () => void {
+  if (!socket) {
+    return () => {};
+  }
+
+  socket.on('presence:offline', callback);
+
+  return () => {
+    socket?.off('presence:offline', callback);
+  };
+}
+
+/**
+ * Subscribe to initial presence list
+ */
+export function onPresenceList(callback: (event: PresenceListEvent) => void): () => void {
+  if (!socket) {
+    return () => {};
+  }
+
+  socket.on('presence:list', callback);
+
+  return () => {
+    socket?.off('presence:list', callback);
+  };
+}
+
+/**
+ * Mark a conversation as read
+ */
+export function markConversationRead(conversationId: number): void {
+  if (!socket?.connected) {
+    return;
+  }
+  socket.emit('conversation:markRead', { conversationId });
+}
+
+export interface MessagesReadEvent {
+  conversationId: number;
+  readBy: number;
+}
+
+/**
+ * Subscribe to messages read events (when someone reads your messages)
+ */
+export function onMessagesRead(callback: (event: MessagesReadEvent) => void): () => void {
+  if (!socket) {
+    return () => {};
+  }
+
+  socket.on('messages:read', callback);
+
+  return () => {
+    socket?.off('messages:read', callback);
   };
 }

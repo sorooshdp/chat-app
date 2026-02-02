@@ -35,4 +35,5 @@ export interface Message {
   sender_id: number;
   content: string | null;
   conversation_id: number;
+  is_read: boolean;
 }

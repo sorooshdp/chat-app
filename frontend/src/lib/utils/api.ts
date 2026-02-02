@@ -1,10 +1,15 @@
 import type {
   UserProfile,
   CreateConversationResponse,
-  MessagesResponse,
   SendMessageResponse,
   MessageWithSender,
+  ConversationWithDetails,
 } from "@/lib/types/api";
+
+interface FetchMessagesResult {
+  messages: MessageWithSender[];
+  hasMore: boolean;
+}
 
 const API_URL = process.env["NEXT_PUBLIC_API_URL"] || "http://localhost:3000";
 
@@ -48,24 +53,38 @@ export async function createConversation(
 }
 
 /**
- * Fetch messages for a conversation
+ * Fetch messages for a conversation with pagination support
  */
 export async function fetchMessages(
   conversationId: number,
-  token: string
-): Promise<MessageWithSender[]> {
-  const response = await fetch(`${API_URL}/api/messages/${conversationId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  token: string,
+  limit: number = 50,
+  beforeId?: string
+): Promise<FetchMessagesResult> {
+  const params = new URLSearchParams();
+  params.set("limit", limit.toString());
+  if (beforeId) {
+    params.set("before", beforeId);
+  }
+
+  const response = await fetch(
+    `${API_URL}/api/messages/${conversationId}?${params.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
 
   if (!response.ok) {
     throw new Error("Failed to fetch messages");
   }
 
-  const data: MessagesResponse = await response.json();
-  return data.messages;
+  const data = await response.json();
+  return {
+    messages: data.messages,
+    hasMore: data.hasMore ?? false,
+  };
 }
 
 /**
@@ -92,4 +111,28 @@ export async function sendMessage(
 
   const data: SendMessageResponse = await response.json();
   return data.message;
+}
+
+/**
+ * Fetch a single conversation by ID
+ */
+export async function fetchConversation(
+  conversationId: number,
+  token: string
+): Promise<ConversationWithDetails | null> {
+  const response = await fetch(`${API_URL}/api/conversations/${conversationId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+    throw new Error("Failed to fetch conversation");
+  }
+
+  const data = await response.json();
+  return data.conversation;
 }

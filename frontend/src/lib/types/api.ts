@@ -4,13 +4,13 @@ import type { User, Conversation, Message } from "./database";
  * Public user profile - omits sensitive fields
  * Used in search results and participant lists
  */
-export type UserProfile = Pick<User, "id" | "name" | "email" | "avatar_url" | "status">;
+export type UserProfile = Pick<User, "id" | "name" | "email" | "avatar_url" | "status" | "last_seen">;
 
 /**
  * Minimal user info for UI display
  * Used when only name/avatar needed
  */
-export type UserDisplay = Pick<User, "id" | "name" | "avatar_url" | "status">;
+export type UserDisplay = Pick<User, "id" | "name" | "avatar_url" | "status" | "last_seen">;
 
 /**
  * Message preview for conversation lists
