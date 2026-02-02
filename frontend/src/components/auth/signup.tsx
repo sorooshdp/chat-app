@@ -59,7 +59,7 @@ export default function SignUp() {
       {/* Animated section */}
       <div className="w-full md:w-1/2 relative overflow-hidden">
         <div className="md:block relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-tl from-blue-900 to-black">
+          <div className="absolute inset-0 bg-linear-to-tl from-blue-900 to-black">
             <div className="absolute inset-0">
               <Orbs />
             </div>
@@ -313,7 +313,7 @@ function PasswordRequirements({ text, met }: { text: string; met: boolean }) {
   return (
     <div className="flex items-center space-x-2">
       <div
-        className={`flex-shrink-0 rounded-full p-1 ${met ? "bg-green-500/20 text-green-400" : "bg-slate-500/20 text-slate-400"}`}
+        className={`shrink-0 rounded-full p-1 ${met ? "bg-green-500/20 text-green-400" : "bg-slate-500/20 text-slate-400"}`}
       >
         <Check className="h-4 w-4" />
       </div>
@@ -325,7 +325,7 @@ function PasswordRequirements({ text, met }: { text: string; met: boolean }) {
 function FeaturePoint({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex items-start space-x-4">
-      <div className="flex-shrink-0 rounded-full p-1 bg-blue-500/20 text-blue-400">
+      <div className="shrink-0 rounded-full p-1 bg-blue-500/20 text-blue-400">
         <Check className="h-5 w-5" />
       </div>
       <div>

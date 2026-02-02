@@ -203,7 +203,7 @@ export default function LogIn() {
 
       {/* Animated section */}
       <div className="w-full md:w-1/2 relative overflow-hidden md:block">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-black">
+        <div className="absolute inset-0 bg-linear-to-br from-blue-900 to-black">
           <div className="absolute inset-0 opacity-30">
             <HexagonGrid />
           </div>
