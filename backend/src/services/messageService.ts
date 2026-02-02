@@ -6,6 +6,7 @@ export interface MessageWithSender {
   created_at: string;
   sender_id: number;
   conversation_id: number;
+  is_read: boolean;
   sender: {
     id: number;
     name: string | null;
@@ -20,7 +21,8 @@ export class MessageService {
   static async getConversationMessages(
     conversationId: number,
     userId: number,
-    limit: number = 100
+    limit: number = 50,
+    before?: number
   ): Promise<MessageWithSender[]> {
 
     // Verify user is participant
@@ -35,8 +37,8 @@ export class MessageService {
       throw new Error('Unauthorized: Not a participant of this conversation');
     }
 
-    // Fetch messages with sender info
-    const { data: messages, error } = await supabase
+    // Build query with optional cursor
+    let query = supabase
       .from('messages')
       .select(`
         id,
@@ -44,6 +46,7 @@ export class MessageService {
         created_at,
         sender_id,
         conversation_id,
+        is_read,
         sender:users!sender_id (
           id,
           name,
@@ -51,14 +54,24 @@ export class MessageService {
         )
       `)
       .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(limit);
+
+    // Apply cursor if provided (get messages before this id)
+    if (before) {
+      query = query.lt('id', before);
+    }
+
+    const { data: messages, error } = await query;
 
     if (error) {
       throw new Error(`Failed to fetch messages: ${error.message}`);
     }
 
-    return (messages || []).map((msg) => {
+    // Reverse to get chronological order (oldest first)
+    const orderedMessages = (messages || []).reverse();
+
+    return orderedMessages.map((msg) => {
       const senderData = Array.isArray(msg.sender) ? msg.sender[0] : msg.sender;
       return {
         id: msg.id,
@@ -66,6 +79,7 @@ export class MessageService {
         created_at: msg.created_at,
         sender_id: msg.sender_id,
         conversation_id: msg.conversation_id,
+        is_read: msg.is_read,
         sender: senderData ?? { id: msg.sender_id, name: null, avatar_url: null },
       };
     });
@@ -106,6 +120,7 @@ export class MessageService {
         created_at,
         sender_id,
         conversation_id,
+        is_read,
         sender:users!sender_id (
           id,
           name,
@@ -125,6 +140,7 @@ export class MessageService {
       created_at: message.created_at,
       sender_id: message.sender_id,
       conversation_id: message.conversation_id,
+      is_read: message.is_read,
       sender: senderData ?? { id: message.sender_id, name: null, avatar_url: null },
     };
   }

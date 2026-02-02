@@ -24,7 +24,7 @@ export class ConversationService {
       .select(`
         *,
         participants:conversation_participants(
-          user:users(id, name, avatar_url, status)
+          user:users(id, name, avatar_url, status, last_seen)
         ),
         messages(content, created_at, sender_id)
       `)
@@ -34,6 +34,9 @@ export class ConversationService {
 
     if (convError) throw new Error(`Database error: ${convError.message}`);
 
+    // Calculate unread counts for each conversation using is_read
+    const unreadCounts = await this.getUnreadCounts(conversationIds, userId);
+
     // Transform and enrich data
     return conversations.map(conv => ({
       id: conv.id,
@@ -42,8 +45,39 @@ export class ConversationService {
       name: conv.name,
       participants: conv.participants.filter(((p: { user: User }) => p.user.id !== userId)),
       last_message: conv.messages[0] || null,
-      unread_count: 0, // Implement separately
+      unread_count: unreadCounts.get(conv.id) || 0,
     }));
+  }
+
+  /**
+   * Calculate unread message counts for conversations using is_read field
+   * Optimized: Single query instead of N queries
+   */
+  private static async getUnreadCounts(
+    conversationIds: number[],
+    userId: number
+  ): Promise<Map<number, number>> {
+    const unreadCounts = new Map<number, number>();
+
+    if (conversationIds.length === 0) return unreadCounts;
+
+    // Single query to fetch all unread messages across conversations
+    const { data, error } = await supabase
+      .from('messages')
+      .select('conversation_id')
+      .in('conversation_id', conversationIds)
+      .eq('is_read', false)
+      .neq('sender_id', userId);
+
+    if (error || !data) return unreadCounts;
+
+    // Count in memory (much faster than N separate queries)
+    for (const msg of data) {
+      const currentCount = unreadCounts.get(msg.conversation_id) || 0;
+      unreadCounts.set(msg.conversation_id, currentCount + 1);
+    }
+
+    return unreadCounts;
   }
 
   /**
@@ -115,5 +149,54 @@ export class ConversationService {
     )?.[0];
 
     return dmConversationId ? parseInt(dmConversationId) : null;
+  }
+
+  /**
+   * Get a single conversation by ID with authorization check
+   */
+  static async getConversationById(conversationId: number, userId: number): Promise<ConversationWithDetails | null> {
+    // Verify user is participant
+    const { data: participant } = await supabase
+      .from('conversation_participants')
+      .select('id')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+      .single();
+
+    if (!participant) {
+      return null; // Not authorized or doesn't exist
+    }
+
+    // Fetch conversation details
+    const { data: conversation, error } = await supabase
+      .from('conversation')
+      .select(`
+        *,
+        participants:conversation_participants(
+          user:users(id, name, avatar_url, status, last_seen)
+        ),
+        messages(content, created_at, sender_id)
+      `)
+      .eq('id', conversationId)
+      .order('created_at', { ascending: false, foreignTable: 'messages' })
+      .limit(1, { foreignTable: 'messages' })
+      .single();
+
+    if (error || !conversation) {
+      return null;
+    }
+
+    // Calculate unread count for this conversation using is_read
+    const unreadCounts = await this.getUnreadCounts([conversationId], userId);
+
+    return {
+      id: conversation.id,
+      created_at: conversation.created_at,
+      type: conversation.type,
+      name: conversation.name,
+      participants: conversation.participants.filter((p: { user: User }) => p.user.id !== userId),
+      last_message: conversation.messages[0] || null,
+      unread_count: unreadCounts.get(conversationId) || 0,
+    };
   }
 }

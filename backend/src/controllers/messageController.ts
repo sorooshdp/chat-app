@@ -24,12 +24,18 @@ export class MessageController {
         return;
       }
 
+      // Parse pagination params
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const before = req.query.before ? parseInt(req.query.before as string) : undefined;
+
       const messages = await MessageService.getConversationMessages(
         conversationId,
-        req.user.id
+        req.user.id,
+        limit,
+        before
       );
 
-      res.json({ messages });
+      res.json({ messages, hasMore: messages.length === limit });
     } catch (error) {
       console.error('Error fetching messages:', error);
       const message = error instanceof Error ? error.message : 'Internal server error';

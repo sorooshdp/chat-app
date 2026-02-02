@@ -6,6 +6,7 @@ import { authenticateToken } from '../middlewares/authMiddleware';
 const router: Router = Router();
 
 router.get('/', authenticateToken, ConversationController.getConversations);
+router.get('/:conversationId', authenticateToken, ConversationController.getConversationById);
 router.post('/', authenticateToken, ConversationController.createConversation);
 
 export default router;

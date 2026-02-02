@@ -54,4 +54,37 @@ export class ConversationController {
       res.status(400).json({ error: error.message || "Failed to create conversation" });
     }
   }
+
+  static async getConversationById(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      const conversationIdParam = req.params.conversationId;
+      if (!conversationIdParam) {
+        res.status(400).json({ error: "Conversation ID is required" });
+        return;
+      }
+
+      const conversationId = parseInt(conversationIdParam);
+      if (isNaN(conversationId)) {
+        res.status(400).json({ error: "Invalid conversation ID" });
+        return;
+      }
+
+      const conversation = await ConversationService.getConversationById(conversationId, req.user.id);
+
+      if (!conversation) {
+        res.status(404).json({ error: "Conversation not found" });
+        return;
+      }
+
+      res.json({ conversation });
+    } catch (error) {
+      console.error("Error fetching conversation:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
 }
