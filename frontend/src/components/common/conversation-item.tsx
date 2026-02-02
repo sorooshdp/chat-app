@@ -10,9 +10,10 @@ interface ConversationItemProps {
   conversation: ConversationWithDetails;
   isActive?: boolean;
   onSelect?: () => void;
+  isOnline?: boolean;
 }
 
-export function ConversationItem({ conversation, isActive = false, onSelect }: ConversationItemProps): JSX.Element {
+export function ConversationItem({ conversation, isActive = false, onSelect, isOnline = false }: ConversationItemProps): JSX.Element {
   const displayName = getDisplayName(conversation);
   const avatarUrl = conversation.participants[0]?.user.avatar_url;
 
@@ -31,7 +32,7 @@ export function ConversationItem({ conversation, isActive = false, onSelect }: C
         }`}
         aria-label={`Open conversation with ${displayName}`}
       >
-        <div className="relative w-10 h-10 mr-3 flex-shrink-0">
+        <div className="relative w-10 h-10 mr-3 shrink-0">
           {avatarUrl ? (
             <Image
               src={avatarUrl}
@@ -45,13 +46,20 @@ export function ConversationItem({ conversation, isActive = false, onSelect }: C
               <span className="text-sm font-semibold text-white">{displayName.charAt(0).toUpperCase()}</span>
             </div>
           )}
+          {/* Online indicator */}
+          <span
+            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 ${
+              isOnline ? "bg-green-500" : "bg-slate-500"
+            }`}
+            title={isOnline ? "Online" : "Offline"}
+          />
         </div>
 
         <div className="flex-1 flex flex-col items-start min-w-0">
           <div className="w-full flex items-center justify-between mb-1">
             <span className="font-semibold text-white group-hover:text-blue-400 truncate">{displayName}</span>
             {conversation.unread_count > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-blue-600 text-xs rounded-full flex-shrink-0">
+              <span className="ml-2 px-2 py-0.5 bg-blue-600 text-xs rounded-full shrink-0">
                 {conversation.unread_count}
               </span>
             )}
@@ -59,7 +67,7 @@ export function ConversationItem({ conversation, isActive = false, onSelect }: C
           <p className="text-slate-400 text-xs truncate w-full">{lastMessagePreview}</p>
         </div>
 
-        {timestamp && <span className="text-xs text-blue-400 ml-2 flex-shrink-0">{timestamp}</span>}
+        {timestamp && <span className="text-xs text-blue-400 ml-2 shrink-0">{timestamp}</span>}
       </button>
     </li>
   );

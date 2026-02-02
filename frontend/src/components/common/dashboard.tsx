@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { DashboardClient } from "@/components/common/dashboard-client";
 import type { ConversationsResponse } from "@/lib/types/api";
-import { JSX } from "react";
+import type { JSX } from "react";
 
 async function fetchConversations(token: string): Promise<ConversationsResponse> {
   const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/conversations`, {
@@ -29,7 +29,12 @@ export default async function Dashboard(): Promise<JSX.Element> {
     redirect("/login");
   }
 
-  const data = await fetchConversations(token);
-
-  return <DashboardClient initialConversations={data.conversations} />;
+  try {
+    const data = await fetchConversations(token);
+    return <DashboardClient initialConversations={data.conversations} />;
+  } catch (error) {
+    console.error("Failed to load dashboard:", error);
+    // Redirect to login on fetch failure (token may be expired)
+    redirect("/login");
+  }
 }

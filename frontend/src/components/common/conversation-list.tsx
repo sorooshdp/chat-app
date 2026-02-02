@@ -1,14 +1,21 @@
 "use client";
 
 import { JSX, useState, useEffect, useCallback } from "react";
-import { Search, Menu, Plus } from "lucide-react";
+import { Search, Menu, Plus, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ConversationWithDetails, UserProfile } from "@/lib/types/api";
 import { ConversationItem } from "./conversation-item";
 import { UserSearchItem } from "./user-search-item";
-import { getAuthToken } from "@/lib/utils/auth";
+import { getAuthToken, clearAuthToken } from "@/lib/utils/auth";
 import { getDisplayName } from "@/lib/utils/conversation";
 import { searchUsers, createConversation } from "@/lib/utils/api";
+import {
+  disconnectSocket,
+  connectSocket,
+  onPresenceOnline,
+  onPresenceOffline,
+  onPresenceList,
+} from "@/lib/socket";
 
 interface ConversationListProps {
   conversations: ConversationWithDetails[];
@@ -32,11 +39,44 @@ export function ConversationList({
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState<boolean>(false);
   const [localConversations, setLocalConversations] = useState<ConversationWithDetails[]>(conversations);
+  const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
 
   // Sync local state with incoming props (important for router.refresh())
   useEffect(() => {
     setLocalConversations(conversations);
   }, [conversations]);
+
+  // Subscribe to presence events
+  useEffect(() => {
+    try {
+      connectSocket();
+    } catch (error) {
+      console.error('Failed to connect socket for presence:', error);
+      return;
+    }
+
+    const unsubscribeList = onPresenceList((event) => {
+      setOnlineUsers(new Set(event.onlineUserIds));
+    });
+
+    const unsubscribeOnline = onPresenceOnline((event) => {
+      setOnlineUsers((prev) => new Set(prev).add(event.userId));
+    });
+
+    const unsubscribeOffline = onPresenceOffline((event) => {
+      setOnlineUsers((prev) => {
+        const next = new Set(prev);
+        next.delete(event.userId);
+        return next;
+      });
+    });
+
+    return () => {
+      unsubscribeList();
+      unsubscribeOnline();
+      unsubscribeOffline();
+    };
+  }, []);
 
   const filteredConversations = localConversations.filter((conv) => {
     const displayName = getDisplayName(conv);
@@ -104,16 +144,32 @@ export function ConversationList({
   const showingConversations = searchMode === "conversations";
   const showingUsers = searchMode === "users";
 
+  const handleLogout = (): void => {
+    disconnectSocket();
+    clearAuthToken();
+    router.push("/login");
+  };
+
   return (
     <aside className={`relative w-full md:w-80 md:min-w-65 md:max-w-xs bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out ${
       isHidden ? "hidden md:flex" : "flex"
     }`}>
-      <button
-        aria-label="Open Menu"
-        className="absolute top-4 left-4 z-20 p-2 rounded-md hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
-      >
-        <Menu className="w-6 h-6 text-blue-400" />
-      </button>
+      <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
+        <button
+          aria-label="Open Menu"
+          className="p-2 rounded-md hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+        >
+          <Menu className="w-6 h-6 text-blue-400" />
+        </button>
+        <button
+          onClick={handleLogout}
+          aria-label="Log out"
+          className="p-2 rounded-md hover:bg-red-900/50 focus:outline-none focus:ring-2 focus:ring-red-600 transition-colors"
+          title="Log out"
+        >
+          <LogOut className="w-5 h-5 text-red-400" />
+        </button>
+      </div>
 
       <div className="p-4 pt-16 bg-slate-900 space-y-3">
         <div className="flex gap-2">
@@ -175,14 +231,21 @@ export function ConversationList({
               </div>
             ) : (
               <ul className="px-2">
-                {filteredConversations.map((conversation) => (
-                  <ConversationItem
-                    key={conversation.id}
-                    conversation={conversation}
-                    isActive={conversation.id === activeConversationId}
-                    onSelect={() => onConversationSelect(conversation.id)}
-                  />
-                ))}
+                {filteredConversations.map((conversation) => {
+                  // Check if the other participant is online
+                  const otherUserId = conversation.participants[0]?.user.id;
+                  const isOnline = otherUserId ? onlineUsers.has(otherUserId) : false;
+
+                  return (
+                    <ConversationItem
+                      key={conversation.id}
+                      conversation={conversation}
+                      isActive={conversation.id === activeConversationId}
+                      onSelect={() => onConversationSelect(conversation.id)}
+                      isOnline={isOnline}
+                    />
+                  );
+                })}
               </ul>
             )}
           </>
@@ -190,8 +253,17 @@ export function ConversationList({
         {showingUsers && (
           <>
             {isSearching ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <div className="px-2 space-y-2">
+                {/* Skeleton loading for user search */}
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 animate-pulse">
+                    <div className="w-10 h-10 rounded-full bg-slate-700"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-24 bg-slate-700 rounded"></div>
+                      <div className="h-3 w-32 bg-slate-700/70 rounded"></div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : userResults.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full px-4 text-center">

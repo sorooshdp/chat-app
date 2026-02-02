@@ -27,7 +27,7 @@ export function UserSearchItem({ user, onSelect, disabled = false }: UserSearchI
         }`}
         aria-label={`Start conversation with ${displayName}`}
       >
-        <div className="relative w-10 h-10 mr-3 flex-shrink-0">
+        <div className="relative w-10 h-10 mr-3 shrink-0">
           {user.avatar_url ? (
             <Image
               src={user.avatar_url}
