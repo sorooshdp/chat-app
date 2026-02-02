@@ -1,17 +1,39 @@
 import { Router, Request, Response } from "express";
+import rateLimit from "express-rate-limit";
 import supabase from "../supabaseClient";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "StronGSecreTKey123";
+// Require JWT_SECRET - fail fast if not configured
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("CRITICAL: JWT_SECRET environment variable is required");
+}
+
+// Rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: { error: "Too many attempts. Please try again in 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // 3 signups per hour per IP
+  message: { error: "Too many accounts created. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const router: Router = Router();
 
-router.post("/login", async (req: Request, res: Response) => {
+router.post("/login", authLimiter, async (req: Request, res: Response) => {
   const { email, pass } = req.body;
 
   if (!email || !pass) {
-    return res.status(400).json({ error: "Email and name are required." });
+    return res.status(400).json({ error: "Email and password are required." });
   }
 
   try {
@@ -23,7 +45,8 @@ router.post("/login", async (req: Request, res: Response) => {
       .limit(1);
 
     if (selectError) {
-      return res.status(500).json({ error: selectError.message });
+      console.error("Database error during login:", selectError);
+      return res.status(500).json({ error: "An error occurred. Please try again." });
     }
 
     if (!existingUsers || existingUsers.length === 0) {
@@ -47,11 +70,31 @@ router.post("/login", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/signup", async (req: Request, res: Response) => {
+router.post("/signup", signupLimiter, async (req: Request, res: Response) => {
   const { email, name, pass } = req.body;
 
   if (!email || !name || !pass) {
     return res.status(400).json({ error: "Name, email, and password are required." });
+  }
+
+  // Server-side password validation
+  if (pass.length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters." });
+  }
+  if (!/[A-Z]/.test(pass)) {
+    return res.status(400).json({ error: "Password must contain at least one uppercase letter." });
+  }
+  if (!/[0-9]/.test(pass)) {
+    return res.status(400).json({ error: "Password must contain at least one number." });
+  }
+  if (!/[^A-Za-z0-9]/.test(pass)) {
+    return res.status(400).json({ error: "Password must contain at least one special character." });
+  }
+
+  // Email format validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format." });
   }
 
   try {
@@ -62,10 +105,13 @@ router.post("/signup", async (req: Request, res: Response) => {
       .eq("email", email)
       .limit(1);
 
-    if (selectError) return res.status(500).json({ error: selectError.message });
+    if (selectError) {
+      console.error("Database error during signup:", selectError);
+      return res.status(500).json({ error: "An error occurred. Please try again." });
+    }
 
     if (existingUsers && existingUsers.length > 0) {
-      return res.status(409).json({ message: "User already exists" });
+      return res.status(409).json({ error: "User already exists" });
     }
 
     const hashedPass = await bcrypt.hash(pass, 10);
@@ -77,14 +123,21 @@ router.post("/signup", async (req: Request, res: Response) => {
       .single();
 
     if (insertError) {
-      return res.status(500).json({ error: insertError.message });
+      console.error("Database error during user creation:", insertError);
+      return res.status(500).json({ error: "Failed to create account. Please try again." });
     }
 
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "1h" });
 
-    res.status(201).json({ message: "User created", user, token });
+    // Return only safe user fields (exclude password hash)
+    res.status(201).json({
+      message: "User created",
+      user: { id: user.id, email: user.email, name: user.name },
+      token,
+    });
   } catch (error) {
-    res.status(500).json({ error: "Unexpected server error", details: error });
+    console.error("Unexpected error during signup:", error);
+    res.status(500).json({ error: "Unexpected server error" });
   }
 });
 
