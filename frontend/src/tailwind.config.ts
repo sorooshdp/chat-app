@@ -12,6 +12,22 @@ const config = {
     prefix: "",
     theme: {
         extend: {
+            fontFamily: {
+                sans: [
+                    "system-ui",
+                    "-apple-system",
+                    "BlinkMacSystemFont",
+                    "Segoe UI",
+                    "Roboto",
+                    "Oxygen",
+                    "Ubuntu",
+                    "Cantarell",
+                    "Fira Sans",
+                    "Droid Sans",
+                    "Helvetica Neue",
+                    "sans-serif",
+                ],
+            },
             colors: {
                 border: "hsl(var(--border))",
                 background: "hsl(var(--background))",
