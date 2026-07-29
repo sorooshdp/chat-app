@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import type { ConversationWithDetails, MessageWithSender } from "@/lib/types/api";
+import type { MessageWithSender } from "@/lib/types/api";
 import type { LocalMessage } from "@/components/chat";
 import { getAuthToken } from "@/lib/utils/auth";
 import { fetchMessages, sendMessage } from "@/lib/utils/api";
@@ -21,7 +21,7 @@ function toLocalMessage(msg: MessageWithSender): LocalMessage {
 }
 
 interface UseChatMessagesOptions {
-  conversation: ConversationWithDetails | null;
+  conversationId: number | null; // Changed from conversation object to ID
   currentUserId: number | null;
   onScrollToBottom: () => void;
 }
@@ -48,7 +48,7 @@ interface UseChatMessagesReturn {
  * Handles fetching, sending, retrying, and deleting messages
  */
 export function useChatMessages({
-  conversation,
+  conversationId,
   currentUserId,
   onScrollToBottom,
 }: UseChatMessagesOptions): UseChatMessagesReturn {
@@ -62,7 +62,7 @@ export function useChatMessages({
 
   // Load initial messages for a conversation
   const loadInitialMessages = useCallback(async (): Promise<void> => {
-    if (!conversation) {
+    if (conversationId === null) {
       setMessages([]);
       setHasMoreMessages(false);
       return;
@@ -74,7 +74,7 @@ export function useChatMessages({
     try {
       const token = getAuthToken();
       const { messages: fetchedMessages, hasMore } = await fetchMessages(
-        conversation.id,
+        conversationId,
         token,
         MESSAGE_LIMIT
       );
@@ -86,18 +86,18 @@ export function useChatMessages({
     } finally {
       setIsLoading(false);
     }
-  }, [conversation, onScrollToBottom]);
+  }, [conversationId, onScrollToBottom]);
 
   // Handle typing indicator emission
   const handleInputChange = useCallback(
     (value: string): void => {
       setMessageInput(value);
 
-      if (!conversation) return;
+      if (conversationId === null) return;
 
       if (value.trim() && !isTypingRef.current) {
         isTypingRef.current = true;
-        emitTypingStart(conversation.id);
+        emitTypingStart(conversationId);
       }
 
       if (typingTimeoutRef.current) {
@@ -105,30 +105,30 @@ export function useChatMessages({
       }
 
       typingTimeoutRef.current = setTimeout(() => {
-        if (conversation && isTypingRef.current) {
+        if (conversationId !== null && isTypingRef.current) {
           isTypingRef.current = false;
-          emitTypingStop(conversation.id);
+          emitTypingStop(conversationId);
         }
       }, 2000);
 
       if (!value.trim() && isTypingRef.current) {
         isTypingRef.current = false;
-        emitTypingStop(conversation.id);
+        emitTypingStop(conversationId);
       }
     },
-    [conversation]
+    [conversationId]
   );
 
   // Load more (older) messages
   const handleLoadMore = useCallback(async (): Promise<void> => {
-    if (!conversation || isLoadingMore || messages.length === 0) return;
+    if (conversationId === null || isLoadingMore || messages.length === 0) return;
 
     setIsLoadingMore(true);
     try {
       const token = getAuthToken();
       const oldestMessage = messages[0];
       const { messages: olderMessages, hasMore } = await fetchMessages(
-        conversation.id,
+        conversationId,
         token,
         50,
         oldestMessage?.id
@@ -145,14 +145,14 @@ export function useChatMessages({
     } finally {
       setIsLoadingMore(false);
     }
-  }, [conversation, isLoadingMore, messages]);
+  }, [conversationId, isLoadingMore, messages]);
 
   // Send a new message
   const handleSendMessage = useCallback(
     async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
       e.preventDefault();
 
-      if (!conversation || !messageInput.trim() || currentUserId === null) return;
+      if (conversationId === null || !messageInput.trim() || currentUserId === null) return;
 
       // Stop typing indicator
       if (typingTimeoutRef.current) {
@@ -160,17 +160,13 @@ export function useChatMessages({
       }
       if (isTypingRef.current) {
         isTypingRef.current = false;
-        emitTypingStop(conversation.id);
+        emitTypingStop(conversationId);
       }
 
       const content = messageInput.trim();
       const tempId = `temp-${Date.now()}`;
 
-      const currentUserParticipant = conversation.participants.find(
-        (p) => p.user.id === currentUserId
-      );
-
-      // Optimistic update
+      // Optimistic update - create placeholder message
       const localMessage: LocalMessage = {
         id: tempId,
         content,
@@ -178,8 +174,8 @@ export function useChatMessages({
         sender_id: currentUserId,
         sender: {
           id: currentUserId,
-          name: currentUserParticipant?.user.name || null,
-          avatar_url: currentUserParticipant?.user.avatar_url || null,
+          name: null, // Will be filled by socket event
+          avatar_url: null,
         },
         status: "sending",
         isLocal: true,
@@ -191,8 +187,9 @@ export function useChatMessages({
 
       try {
         const token = getAuthToken();
-        const sentMessage = await sendMessage(conversation.id, content, token);
+        const sentMessage = await sendMessage(conversationId, content, token);
 
+        // Replace temp message with real one
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === tempId
@@ -203,6 +200,7 @@ export function useChatMessages({
       } catch (error) {
         console.error("Error sending message:", error);
 
+        // Mark as failed
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === tempId ? { ...msg, status: "failed" as const } : msg
@@ -210,7 +208,7 @@ export function useChatMessages({
         );
       }
     },
-    [conversation, messageInput, currentUserId]
+    [conversationId, messageInput, currentUserId]
   );
 
   // Retry sending a failed message
@@ -219,7 +217,7 @@ export function useChatMessages({
       const failedMessage = messages.find(
         (msg) => msg.id === messageId && msg.status === "failed"
       );
-      if (!failedMessage || !conversation) return;
+      if (!failedMessage || conversationId === null) return;
 
       setMessages((prev) =>
         prev.map((msg) =>
@@ -230,7 +228,7 @@ export function useChatMessages({
       try {
         const token = getAuthToken();
         const sentMessage = await sendMessage(
-          conversation.id,
+          conversationId,
           failedMessage.content,
           token
         );
@@ -252,7 +250,7 @@ export function useChatMessages({
         );
       }
     },
-    [conversation, messages]
+    [conversationId, messages]
   );
 
   // Delete a failed message

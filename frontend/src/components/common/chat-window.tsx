@@ -36,6 +36,9 @@ export function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useCurrentUser();
 
+  // Extract conversation ID to use as stable dependency
+  const conversationId = conversation?.id ?? null;
+
   const scrollToBottom = useCallback((): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -56,24 +59,26 @@ export function ChatWindow({
     loadInitialMessages,
     typingTimeoutRef,
   } = useChatMessages({
-    conversation,
+    conversationId, // Use ID instead of full object
     currentUserId,
     onScrollToBottom: scrollToBottom,
   });
 
   // Socket subscriptions (typing, new messages, read receipts)
   const { isTyping } = useChatSocket({
-    conversationId: conversation?.id ?? null,
+    conversationId,
     currentUserId,
     setMessages,
     onScrollToBottom: scrollToBottom,
     typingTimeoutRef,
   });
 
-  // Load messages when conversation changes
+  // Load messages only when conversation ID changes
   useEffect(() => {
-    loadInitialMessages();
-  }, [loadInitialMessages]);
+    if (conversationId !== null) {
+      loadInitialMessages();
+    }
+  }, [conversationId]); // Only depend on ID, not loadInitialMessages
 
   // Auto-scroll when new messages arrive
   useEffect(() => {

@@ -67,12 +67,13 @@ export function useChatSocket({
         const existsById = prev.some((msg) => msg.id === processedMessage.id);
         if (existsById) return prev;
 
-        // Check for local message that matches (optimistic update)
+        // Check for local message that matches (optimistic update replacement)
         const localMessageIndex = prev.findIndex(
           (msg) =>
             msg.isLocal &&
             msg.sender_id === processedMessage.sender_id &&
-            msg.content === processedMessage.content
+            msg.content === processedMessage.content &&
+            msg.status === "sending"
         );
 
         if (localMessageIndex !== -1) {
@@ -81,6 +82,7 @@ export function useChatSocket({
           return updated;
         }
 
+        // New message from someone else
         return [...prev, processedMessage];
       });
 
