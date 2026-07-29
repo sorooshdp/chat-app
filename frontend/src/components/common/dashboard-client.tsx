@@ -30,7 +30,6 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
     () => conversations.find((c) => c.id === activeConversationId) || null,
     [conversations, activeConversationId]
   );
-  
   const isOtherUserOnline = useMemo(
     () => activeConversation
       ? onlineUsers.has(activeConversation.participants[0]?.user.id ?? -1)
@@ -82,7 +81,11 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
             sender_id: event.lastMessage.sender_id,
           };
           
-          if (event.lastMessage.sender_id !== currentUserId) {
+          // Only increment unread count if:
+          // 1. Message is from someone else
+          // 2. User is NOT currently viewing this conversation
+          if (event.lastMessage.sender_id !== currentUserId && 
+              event.conversationId !== activeConversationId) {
             conversation.unread_count = (conversation.unread_count || 0) + 1;
           }
           
@@ -136,7 +139,7 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
       unsubscribeOnline();
       unsubscribeOffline();
     };
-  }, [currentUserId]);
+  }, [currentUserId, activeConversationId]); // Added activeConversationId to deps
 
   const handleConversationSelect = useCallback((conversationId: number): void => {
     setActiveConversationId(conversationId);
