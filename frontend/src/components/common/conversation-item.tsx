@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import type { ConversationWithDetails } from "@/lib/types/api";
-import { JSX } from "react/jsx-dev-runtime";
+import { JSX, memo } from "react";
 import { getDisplayName } from "@/lib/utils/conversation";
 import { formatTimestamp } from "@/lib/utils/date";
 
@@ -13,14 +13,22 @@ interface ConversationItemProps {
   isOnline?: boolean;
 }
 
-export function ConversationItem({ conversation, isActive = false, onSelect, isOnline = false }: ConversationItemProps): JSX.Element {
+export const ConversationItem = memo(function ConversationItem({
+  conversation,
+  isActive = false,
+  onSelect,
+  isOnline = false,
+}: ConversationItemProps): JSX.Element {
   const displayName = getDisplayName(conversation);
   const avatarUrl = conversation.participants[0]?.user.avatar_url;
 
-  const timestamp = conversation.last_message?.created_at ? formatTimestamp(conversation.last_message.created_at) : "";
+  const timestamp = conversation.last_message?.created_at
+    ? formatTimestamp(conversation.last_message.created_at)
+    : "";
 
   const lastMessagePreview = conversation.last_message?.content
-    ? conversation.last_message.content.substring(0, 50) + (conversation.last_message.content.length > 50 ? "..." : "")
+    ? conversation.last_message.content.substring(0, 50) +
+      (conversation.last_message.content.length > 50 ? "..." : "")
     : "No messages yet";
 
   return (
@@ -43,7 +51,9 @@ export function ConversationItem({ conversation, isActive = false, onSelect, isO
             />
           ) : (
             <div className="w-full h-full rounded-full bg-slate-700 border-2 border-blue-700 flex items-center justify-center">
-              <span className="text-sm font-semibold text-white">{displayName.charAt(0).toUpperCase()}</span>
+              <span className="text-sm font-semibold text-white">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
             </div>
           )}
           {/* Online indicator */}
@@ -57,7 +67,9 @@ export function ConversationItem({ conversation, isActive = false, onSelect, isO
 
         <div className="flex-1 flex flex-col items-start min-w-0">
           <div className="w-full flex items-center justify-between mb-1">
-            <span className="font-semibold text-white group-hover:text-blue-400 truncate">{displayName}</span>
+            <span className="font-semibold text-white group-hover:text-blue-400 truncate">
+              {displayName}
+            </span>
             {conversation.unread_count > 0 && (
               <span className="ml-2 px-2 py-0.5 bg-blue-600 text-xs rounded-full shrink-0">
                 {conversation.unread_count}
@@ -70,5 +82,21 @@ export function ConversationItem({ conversation, isActive = false, onSelect, isO
         {timestamp && <span className="text-xs text-blue-400 ml-2 shrink-0">{timestamp}</span>}
       </button>
     </li>
+  );
+}, areConversationPropsEqual);
+
+// Custom comparison function for memo
+function areConversationPropsEqual(
+  prev: ConversationItemProps,
+  next: ConversationItemProps
+): boolean {
+  // Only re-render if these specific fields change
+  return (
+    prev.conversation.id === next.conversation.id &&
+    prev.conversation.unread_count === next.conversation.unread_count &&
+    prev.conversation.last_message?.content === next.conversation.last_message?.content &&
+    prev.conversation.last_message?.created_at === next.conversation.last_message?.created_at &&
+    prev.isActive === next.isActive &&
+    prev.isOnline === next.isOnline
   );
 }
