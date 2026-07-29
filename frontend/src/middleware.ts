@@ -28,14 +28,12 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
 
-  // Define protected routes
   const protectedRoutes = ["/dashboard"];
   const authRoutes = ["/login", "/signup"];
 
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
-  // If user is trying to access protected route
   if (isProtectedRoute) {
     if (!token) {
       const loginUrl = new URL("/login", request.url);
@@ -43,7 +41,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Verify token with backend
     const isValid = await verifyTokenWithBackend(token);
     if (!isValid) {
       const loginUrl = new URL("/login", request.url);
