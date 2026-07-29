@@ -17,19 +17,13 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import TypeAnimation from "@/components/ui/typeAnimation";
-import AnimatedBackground from "@/components/ui/animatedBackground";
 import Header from "./header";
 
 export default function Landing() {
   return (
-    <div className="relative min-h-screen">
-      {/* Animated Background */}
-      <AnimatedBackground />
-      <div>
+    <div>
         {/* Header */}
-        <>
-          <Header />
-        </>
+        <Header />
 
         {/*divider */}
         <div className="bg-[radial-gradient(circle,rgba(255,255,255,1)_1%,rgba(255,255,255,0.05)_100%)] mx-auto h-0.5 opacity-50 "></div>
@@ -455,7 +449,6 @@ export default function Landing() {
             <p>© 2025 All rights not reserved 🤭.</p>
           </div>
         </footer>
-      </div>
     </div>
   );
 }

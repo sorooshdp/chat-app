@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import AnimatedBackground from "@/components/ui/animatedBackground";
 import Image from "next/image";
 
 export default function Contact() {
@@ -49,12 +48,7 @@ export default function Contact() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* Animated Background */}
-      <AnimatedBackground />
-
-      {/* Content */}
-      <div className="relative z-10">
+    <div>
         <header className="container mx-auto py-6 px-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Image src={"/nexus.png"} alt="Logo" width={40} height={40} />
@@ -206,7 +200,6 @@ export default function Contact() {
             <p>© 2025 Soroosh — Frontend Developer Portfolio</p>
           </div>
         </footer>
-      </div>
     </div>
   );
 }

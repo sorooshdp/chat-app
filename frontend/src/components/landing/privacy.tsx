@@ -1,17 +1,11 @@
 import Link from "next/link"
 import {  ArrowLeft, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import AnimatedBackground from "@/components/ui/animatedBackground"
 import Image from "next/image"
 
 export default function Privacy() {
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* Animated Background */}
-      <AnimatedBackground />
-
-      {/* Content */}
-      <div className="relative z-10">
+    <div>
         <header className="container mx-auto py-6 px-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Image src={"/nexus.png"} alt="Logo" width={40} height={40} />
@@ -126,7 +120,6 @@ export default function Privacy() {
             <p>© 2025 Nexus. All rights reserved. We protect your data like it&apos;s our secret cookie recipe.</p>
           </div>
         </footer>
-      </div>
     </div>
   )
 }
