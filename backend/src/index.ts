@@ -21,6 +21,8 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000,http:
   .split(',')
   .map(origin => origin.trim());
 
+app.set('trust proxy', 1);
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl)
