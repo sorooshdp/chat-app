@@ -57,7 +57,7 @@ export function setAuthToken(token: string, maxAgeSeconds: number = 3600): void 
   const expires = new Date(Date.now() + maxAgeSeconds * 1000).toUTCString();
   // Add Secure flag when running over HTTPS (production)
   const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `token=${token}; Path=/; SameSite=Strict; Expires=${expires}${secureFlag}`;
+  document.cookie = `token=${token}; Path=/; SameSite=Lax; Expires=${expires}${secureFlag}`;
 }
 
 /**
