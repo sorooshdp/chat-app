@@ -1,22 +1,37 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
+
+const secret = new TextEncoder().encode(process.env['JWT_SECRET']);
 
 /**
  * Verify token with backend
  */
-async function verifyTokenWithBackend(token: string): Promise<boolean> {
-  try {
-    const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/auth/verify`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+// async function verifyTokenWithBackend(token: string): Promise<boolean> {
+//   try {
+//     const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/auth/verify`, {
+//       method: "POST",
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//         "Content-Type": "application/json",
+//       },
+//     });
 
-    return response.ok;
-  } catch (error) {
-    console.error("Token verification error:", error);
+//     return response.ok;
+//   } catch (error) {
+//     console.error("Token verification error:", error);
+//     return false;
+//   }
+// }
+
+/**
+ * Verify token locally
+ */
+async function isTokenValid(token: string): Promise<boolean>  {
+  try {
+    await jwtVerify(token, secret);
+    return true;
+  } catch {
     return false;
   }
 }
@@ -41,7 +56,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const isValid = await verifyTokenWithBackend(token);
+    const isValid = await isTokenValid(token);
     if (!isValid) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
@@ -51,7 +66,7 @@ export async function middleware(request: NextRequest) {
 
   // If user is authenticated and trying to access auth pages, redirect to dashboard
   if (isAuthRoute && token) {
-    const isValid = await verifyTokenWithBackend(token);
+    const isValid = await isTokenValid(token);
     if (isValid) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
