@@ -35,25 +35,21 @@ export function getCurrentUserId(): number {
   }
 }
 
-export function getAuthToken(): string {
-  const token = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("token="))
-    ?.split("=")[1];
-
-  if (!token) {
-    throw new Error("No authentication token found");
-  }
-
-  return token;
+export function getAuthToken(): string | null {
+  return (
+    document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("token="))
+      ?.split("=")[1] ?? null
+  );
 }
 
 /**
  * Set the auth token cookie with sane defaults
  * @param token JWT token string
- * @param maxAgeSeconds Optional max-age in seconds (default 3600 = 1h)
+ * @param maxAgeSeconds Optional max-age in seconds (default 604800 = 7d)
  */
-export function setAuthToken(token: string, maxAgeSeconds: number = 3600): void {
+export function setAuthToken(token: string, maxAgeSeconds: number = 604800): void {
   const expires = new Date(Date.now() + maxAgeSeconds * 1000).toUTCString();
   // Add Secure flag when running over HTTPS (production)
   const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
@@ -64,5 +60,6 @@ export function setAuthToken(token: string, maxAgeSeconds: number = 3600): void 
  * Clear the auth token cookie (logout)
  */
 export function clearAuthToken(): void {
-  document.cookie = "token=; Path=/; SameSite=Strict; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `token=; Path=/; SameSite=Lax; Max-Age=0${secureFlag}`;
 }

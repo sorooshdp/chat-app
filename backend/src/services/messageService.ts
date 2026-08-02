@@ -1,4 +1,4 @@
-import supabase from '../supabaseClient';
+import supabase from "../supabaseClient";
 
 export interface MessageWithSender {
   id: number;
@@ -22,25 +22,25 @@ export class MessageService {
     conversationId: number,
     userId: number,
     limit: number = 50,
-    before?: number
+    before?: number,
   ): Promise<MessageWithSender[]> {
-
     // Verify user is participant
     const { data: participant } = await supabase
-      .from('conversation_participants')
-      .select('id')
-      .eq('conversation_id', conversationId)
-      .eq('user_id', userId)
+      .from("conversation_participants")
+      .select("id")
+      .eq("conversation_id", conversationId)
+      .eq("user_id", userId)
       .single();
 
     if (!participant) {
-      throw new Error('Unauthorized: Not a participant of this conversation');
+      throw new Error("Unauthorized: Not a participant of this conversation");
     }
 
     // Build query with optional cursor
     let query = supabase
-      .from('messages')
-      .select(`
+      .from("messages")
+      .select(
+        `
         id,
         content,
         created_at,
@@ -52,20 +52,22 @@ export class MessageService {
           name,
           avatar_url
         )
-      `)
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: false })
+      `,
+      )
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
       .limit(limit);
 
     // Apply cursor if provided (get messages before this id)
     if (before) {
-      query = query.lt('id', before);
+      query = query.lt("id", before);
     }
 
     const { data: messages, error } = await query;
 
     if (error) {
-      throw new Error(`Failed to fetch messages: ${error.message}`);
+      console.error("Supabase error fetching messages:", error);
+      throw new Error("Failed to fetch messages");
     }
 
     // Reverse to get chronological order (oldest first)
@@ -88,33 +90,29 @@ export class MessageService {
   /**
    * Send a message in a conversation
    */
-  static async sendMessage(
-    conversationId: number,
-    senderId: number,
-    content: string
-  ): Promise<MessageWithSender> {
-
+  static async sendMessage(conversationId: number, senderId: number, content: string): Promise<MessageWithSender> {
     // Verify user is participant
     const { data: participant } = await supabase
-      .from('conversation_participants')
-      .select('id')
-      .eq('conversation_id', conversationId)
-      .eq('user_id', senderId)
+      .from("conversation_participants")
+      .select("id")
+      .eq("conversation_id", conversationId)
+      .eq("user_id", senderId)
       .single();
 
     if (!participant) {
-      throw new Error('Unauthorized: Not a participant of this conversation');
+      throw new Error("Unauthorized: Not a participant of this conversation");
     }
 
     // Insert message
     const { data: message, error } = await supabase
-      .from('messages')
+      .from("messages")
       .insert({
         conversation_id: conversationId,
         sender_id: senderId,
         content,
       })
-      .select(`
+      .select(
+        `
         id,
         content,
         created_at,
@@ -126,11 +124,13 @@ export class MessageService {
           name,
           avatar_url
         )
-      `)
+      `,
+      )
       .single();
 
     if (error) {
-      throw new Error(`Failed to send message: ${error.message}`);
+      console.error("Supabase error sending message:", error);
+      throw new Error("Failed to send message");
     }
 
     const senderData = Array.isArray(message.sender) ? message.sender[0] : message.sender;
@@ -150,15 +150,15 @@ export class MessageService {
    */
   static async getConversationParticipantIds(conversationId: number): Promise<number[]> {
     const { data: participants, error } = await supabase
-      .from('conversation_participants')
-      .select('user_id')
-      .eq('conversation_id', conversationId);
+      .from("conversation_participants")
+      .select("user_id")
+      .eq("conversation_id", conversationId);
 
     if (error) {
-      console.error('Failed to get participants:', error);
+      console.error("Failed to get participants:", error);
       return [];
     }
 
-    return participants?.map(p => p.user_id) || [];
+    return participants?.map((p) => p.user_id) || [];
   }
 }

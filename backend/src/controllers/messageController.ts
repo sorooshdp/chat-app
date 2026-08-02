@@ -1,59 +1,58 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../middlewares/authMiddleware';
-import { MessageService } from '../services/messageService';
-import { emitNewMessage, emitConversationListUpdate } from '../socket';
+import { Response } from "express";
+import { AuthenticatedRequest } from "../middlewares/authMiddleware";
+import { MessageService } from "../services/messageService";
+import { emitNewMessage, emitConversationListUpdate } from "../socket";
 
 export class MessageController {
   static async getMessages(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {
-        res.status(401).json({ error: 'Unauthorized' });
+        res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
       const conversationIdParam = req.params.conversationId;
       if (!conversationIdParam) {
-        res.status(400).json({ error: 'Conversation ID is required' });
+        res.status(400).json({ error: "Conversation ID is required" });
         return;
       }
 
       const conversationId = parseInt(conversationIdParam);
 
       if (isNaN(conversationId)) {
-        res.status(400).json({ error: 'Invalid conversation ID' });
+        res.status(400).json({ error: "Invalid conversation ID" });
         return;
       }
 
-      // Parse pagination params
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
-      const before = req.query.before ? parseInt(req.query.before as string) : undefined;
+      // Parse pagination params (clamped to prevent resource exhaustion)
+      const rawLimit = parseInt(req.query.limit as string);
+      const limit = Number.isNaN(rawLimit) ? 50 : Math.min(Math.max(rawLimit, 1), 100);
 
-      const messages = await MessageService.getConversationMessages(
-        conversationId,
-        req.user.id,
-        limit,
-        before
-      );
+      const rawBefore = parseInt(req.query.before as string);
+      const before = Number.isNaN(rawBefore) ? undefined : rawBefore;
+
+      const messages = await MessageService.getConversationMessages(conversationId, req.user.id, limit, before);
 
       res.json({ messages, hasMore: messages.length === limit });
     } catch (error) {
-      console.error('Error fetching messages:', error);
-      const message = error instanceof Error ? error.message : 'Internal server error';
-      res.status(error instanceof Error && error.message.includes('Unauthorized') ? 403 : 500)
-        .json({ error: message });
+      console.error("Error fetching messages:", error);
+      const isAuthError = error instanceof Error && error.message.startsWith("Unauthorized");
+      res.status(isAuthError ? 403 : 500).json({
+        error: isAuthError ? "Not a participant of this conversation" : "Internal server error",
+      });
     }
   }
 
   static async sendMessage(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {
-        res.status(401).json({ error: 'Unauthorized' });
+        res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
       const conversationIdParam = req.params.conversationId;
       if (!conversationIdParam) {
-        res.status(400).json({ error: 'Conversation ID is required' });
+        res.status(400).json({ error: "Conversation ID is required" });
         return;
       }
 
@@ -61,25 +60,21 @@ export class MessageController {
       const { content } = req.body;
 
       if (isNaN(conversationId)) {
-        res.status(400).json({ error: 'Invalid conversation ID' });
+        res.status(400).json({ error: "Invalid conversation ID" });
         return;
       }
 
-      if (!content || typeof content !== 'string' || content.trim().length === 0) {
-        res.status(400).json({ error: 'Message content is required' });
+      if (!content || typeof content !== "string" || content.trim().length === 0) {
+        res.status(400).json({ error: "Message content is required" });
         return;
       }
 
       if (content.trim().length > 5000) {
-        res.status(400).json({ error: 'Message too long (max 5000 characters)' });
+        res.status(400).json({ error: "Message too long (max 5000 characters)" });
         return;
       }
 
-      const message = await MessageService.sendMessage(
-        conversationId,
-        req.user.id,
-        content.trim()
-      );
+      const message = await MessageService.sendMessage(conversationId, req.user.id, content.trim());
 
       // Emit the message to all connected clients in the conversation room
       emitNewMessage(conversationId, message);
@@ -94,10 +89,11 @@ export class MessageController {
 
       res.status(201).json({ message });
     } catch (error) {
-      console.error('Error sending message:', error);
-      const message = error instanceof Error ? error.message : 'Internal server error';
-      res.status(error instanceof Error && error.message.includes('Unauthorized') ? 403 : 500)
-        .json({ error: message });
+      console.error("Error sending message:", error);
+      const isAuthError = error instanceof Error && error.message.startsWith("Unauthorized");
+      res.status(isAuthError ? 403 : 500).json({
+        error: isAuthError ? "Not a participant of this conversation" : "Internal server error",
+      });
     }
   }
 }

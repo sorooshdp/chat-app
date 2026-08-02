@@ -62,7 +62,7 @@ router.post("/login", authLimiter, async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(200).json({ message: 'Login successful', user: { id: user.id, email: user.email, name: user.name }, token });
   } catch (error) {
@@ -127,7 +127,7 @@ router.post("/signup", signupLimiter, async (req: Request, res: Response) => {
       return res.status(500).json({ error: "Failed to create account. Please try again." });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "1h" });
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
 
     // Return only safe user fields (exclude password hash)
     res.status(201).json({
@@ -141,7 +141,7 @@ router.post("/signup", signupLimiter, async (req: Request, res: Response) => {
   }
 });
 
-router.post("/verify", (req: Request, res: Response) => {
+router.post("/verify", authLimiter, (req: Request, res: Response) => {
   const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {
