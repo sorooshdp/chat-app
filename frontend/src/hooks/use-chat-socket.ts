@@ -86,6 +86,10 @@ export function useChatSocket({
         return [...prev, processedMessage];
       });
 
+      if (newMsg.sender_id !== currentUserId) {
+        markConversationRead(newMsg.conversation_id);
+      }
+
       // Clear typing indicator when message received
       setTypingUsers((prev) => {
         const next = new Set(prev);
