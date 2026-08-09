@@ -95,6 +95,13 @@ export function ConversationList({
       setIsSearching(true);
       try {
         const token = getAuthToken();
+
+        if (!token) {
+          console.error("No auth token found")
+          setUserResults([]);
+          return;
+        }
+
         const results = await searchUsers(query, token);
         setUserResults(results);
       } catch (error) {
@@ -120,6 +127,13 @@ export function ConversationList({
       setIsCreatingConversation(true);
       try {
         const token = getAuthToken();
+
+        if (!token) {
+          alert("Authentication error. Please log in again.")
+          router.push("/login");
+          return;
+        }
+        
         const response = await createConversation(user.id, token);
 
         if (response.conversation) {

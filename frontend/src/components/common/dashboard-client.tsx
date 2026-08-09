@@ -98,6 +98,11 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
         (async () => {
           try {
             const token = getAuthToken();
+            
+            if (!token) {
+              console.error("No auth token available to fetch new conversation");
+              return;
+            }
             const newConversation = await fetchConversation(event.conversationId, token);
             if (newConversation) {
               setConversations((current) => {

@@ -73,6 +73,12 @@ export function useChatMessages({
 
     try {
       const token = getAuthToken();
+
+      if (!token) {
+        console.error("No auth token found");
+        return;
+      }
+
       const { messages: fetchedMessages, hasMore } = await fetchMessages(
         conversationId,
         token,
@@ -126,6 +132,10 @@ export function useChatMessages({
     setIsLoadingMore(true);
     try {
       const token = getAuthToken();
+      if (!token) {
+        console.error("No auth token found");
+        return;
+      }
       const oldestMessage = messages[0];
       const { messages: olderMessages, hasMore } = await fetchMessages(
         conversationId,
@@ -187,6 +197,11 @@ export function useChatMessages({
 
       try {
         const token = getAuthToken();
+
+        if (!token) {
+          throw new Error("No auth token found");
+        }
+
         const sentMessage = await sendMessage(conversationId, content, token);
 
         // Replace temp message with real one
@@ -227,6 +242,11 @@ export function useChatMessages({
 
       try {
         const token = getAuthToken();
+
+        if (!token) {
+          throw new Error("No auth token found");
+        }
+
         const sentMessage = await sendMessage(
           conversationId,
           failedMessage.content,
