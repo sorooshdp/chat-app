@@ -10,10 +10,19 @@ if (!JWT_SECRET) {
   throw new Error("CRITICAL: JWT_SECRET environment variable is required");
 }
 
+// Rate limit thresholds are env-configurable so tests (and different
+// deployments) can tune them without touching this file.
+function limitFromEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 // Rate limiting for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
+  max: limitFromEnv("AUTH_RATE_LIMIT_MAX", 5), // 5 attempts per window
   message: { error: "Too many attempts. Please try again in 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -21,7 +30,7 @@ const authLimiter = rateLimit({
 
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // 3 signups per hour per IP
+  max: limitFromEnv("SIGNUP_RATE_LIMIT_MAX", 3), // 3 signups per hour per IP
   message: { error: "Too many accounts created. Please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
