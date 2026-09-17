@@ -169,6 +169,7 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
         isHidden={activeConversationId !== null}
       />
       <ChatWindow
+        key={activeConversationId || "empty-chat"}
         conversation={activeConversation}
         onClose={() => setActiveConversationId(null)}
         isOtherUserOnline={isOtherUserOnline}
