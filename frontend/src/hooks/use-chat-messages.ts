@@ -76,11 +76,13 @@ export function useChatMessages({
     setReplyingTo(null);
     setMessageInput(content);
   }, []);
+
   const handleReplyInit = useCallback((id: string, senderName: string | null, content: string) => {
     setReplyingTo({ id, senderName, content });
     setEditingMessage(null);
     setMessageInput("");
   }, []);
+
   const handleCancelAction = useCallback(() => {
     setEditingMessage(null);
     setReplyingTo(null);
@@ -223,6 +225,12 @@ export function useChatMessages({
         status: "sending",
         isLocal: true,
         is_read: false,
+        reply_to: replyingTo
+          ? {
+              content: replyingTo.content,
+              sender: { name: replyingTo.senderName },
+            }
+          : null,
       };
 
       setMessageInput("");
@@ -235,7 +243,7 @@ export function useChatMessages({
           throw new Error("No auth token found");
         }
 
-        const sentMessage = await sendMessage(conversationId, content, token);
+        const sentMessage = await sendMessage(conversationId, content, token, replyingTo?.id);
 
         // Replace temp message with real one
         setMessages((prev) =>
@@ -261,7 +269,7 @@ export function useChatMessages({
         // Optimistic delete
         setMessages((prev) => prev.map((msg) => (msg.id === id ? { ...msg, is_deleted: true, content: "" } : msg)));
       } catch (error) {
-        console.error("Delete faild", error)
+        console.error("Delete faild", error);
       }
     },
     [conversationId],

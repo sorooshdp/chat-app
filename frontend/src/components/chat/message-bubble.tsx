@@ -39,48 +39,48 @@ export function MessageBubble({
   onEdit,
   onReply,
 }: MessageBubbleProps): JSX.Element {
-  const timestamp = formatTimestamp(createdAt);
+const timestamp = formatTimestamp(createdAt);
   const isSending = status === "sending";
   const isSent = status === "sent";
   const isFailed = status === "failed";
 
-  return (
-    <div className={`flex group relative w-full mb-2 ${isOwnMessage ? "justify-end" : "justify-start"}`}>
-      
-      {/* Hover Action Bar */}
-      {!isDeleted && isSent && (
-        <div 
-          className={`opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 absolute top-1/2 -translate-y-1/2 px-2 
-          ${isOwnMessage ? "right-full flex-row-reverse" : "left-full"}`}
-        >
-          <button 
-            onClick={() => onReply?.(id, senderName, content)}
+  // Extracted Action Bar using safe flexbox rendering instead of absolute positioning
+  const actionBar = !isDeleted && isSent && (
+    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 px-2 shrink-0">
+      <button
+        onClick={() => onReply?.(id, senderName, content)}
+        className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition"
+        title="Reply"
+      >
+        <Reply className="w-4 h-4" />
+      </button>
+
+      {isOwnMessage && (
+        <>
+          <button
+            onClick={() => onEdit?.(id, content)}
             className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition"
-            title="Reply"
+            title="Edit"
           >
-            <Reply className="w-4 h-4" />
+            <Pencil className="w-4 h-4" />
           </button>
-          
-          {isOwnMessage && (
-            <>
-              <button 
-                onClick={() => onEdit?.(id, content)}
-                className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition"
-                title="Edit"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={() => onDelete?.(id)}
-                className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-red-400 hover:bg-slate-700 transition"
-                title="Delete"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </>
-          )}
-        </div>
+          <button
+            onClick={() => onDelete?.(id)}
+            className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-red-400 hover:bg-slate-700 transition"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </>
       )}
+    </div>
+  );
+
+  return (
+    <div className={`flex group w-full mb-2 items-center ${isOwnMessage ? "justify-end" : "justify-start"}`}>
+      
+      {/* Show actions on the LEFT for own messages */}
+      {isOwnMessage && actionBar}
 
       <div className="flex flex-col max-w-[70%]">
         <div
@@ -149,6 +149,10 @@ export function MessageBubble({
           </div>
         )}
       </div>
+
+      {/* Show actions on the RIGHT for other messages */}
+      {!isOwnMessage && actionBar}
+
     </div>
   );
 }
