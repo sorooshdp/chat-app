@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 import { MessageService } from "../services/messageService";
-import { emitNewMessage, emitConversationListUpdate } from "../socket";
+import { emitNewMessage, emitConversationListUpdate, emitMessageUpdated, emitMessageDeleted } from "../socket";
 
 export class MessageController {
   static async getMessages(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -94,6 +94,42 @@ export class MessageController {
       res.status(isAuthError ? 403 : 500).json({
         error: isAuthError ? "Not a participant of this conversation" : "Internal server error",
       });
+    }
+  }
+
+  static async editMessage(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) { res.status(401).json({ error: "Unauthorized" }); return; }
+      const messageId = parseInt(req.params.messageId!);
+      const { content } = req.body;
+
+      if (isNaN(messageId) || !content || content.trim().length === 0) {
+        res.status(400).json({ error: "Invalid data" }); return;
+      }
+
+      const message = await MessageService.editMessage(messageId, req.user.id, content.trim());
+      emitMessageUpdated(message.conversation_id, message);
+      res.json({ message });
+    } catch (error) {
+      res.status(403).json({ error: "Failed to edit message" });
+    }
+  }
+
+  static async deleteMessage(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) { res.status(401).json({ error: "Unauthorized" }); return; }
+      const messageId = parseInt(req.params.messageId!);
+      const conversationId = parseInt(req.params.conversationId!);
+
+      if (isNaN(messageId) || isNaN(conversationId)) {
+        res.status(400).json({ error: "Invalid IDs" }); return;
+      }
+
+      await MessageService.deleteMessage(messageId, req.user.id);
+      emitMessageDeleted(conversationId, messageId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(403).json({ error: "Failed to delete message" });
     }
   }
 }

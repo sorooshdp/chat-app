@@ -7,12 +7,21 @@ export interface MessageWithSender {
   sender_id: number;
   conversation_id: number;
   is_read: boolean;
-  sender: {
-    id: number;
-    name: string | null;
-    avatar_url: string | null;
-  };
+  is_edited: boolean;
+  is_deleted: boolean;
+  reply_to_id: number | null;
+  sender: { id: number; name: string | null; avatar_url: string | null };
+  reply_to?: { content: string | null; sender: { name: string | null } } | null;
 }
+
+const MESSAGE_SELECT = `
+  id, content, created_at, sender_id, conversation_id, is_read, is_edited, is_deleted, reply_to_id,
+  sender:users!messages_sender_id_fkey (id, name, avatar_url),
+  reply_to:messages!messages_reply_to_id_fkey (
+    content,
+    sender:users!messages_sender_id_fkey (name)
+  )
+`;
 
 export class MessageService {
   /**
@@ -36,24 +45,9 @@ export class MessageService {
       throw new Error("Unauthorized: Not a participant of this conversation");
     }
 
-    // Build query with optional cursor
     let query = supabase
       .from("messages")
-      .select(
-        `
-        id,
-        content,
-        created_at,
-        sender_id,
-        conversation_id,
-        is_read,
-        sender:users!sender_id (
-          id,
-          name,
-          avatar_url
-        )
-      `,
-      )
+      .select(MESSAGE_SELECT)
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -64,27 +58,9 @@ export class MessageService {
     }
 
     const { data: messages, error } = await query;
+    if (error) throw new Error("Failed to fetch messages");
 
-    if (error) {
-      console.error("Supabase error fetching messages:", error);
-      throw new Error("Failed to fetch messages");
-    }
-
-    // Reverse to get chronological order (oldest first)
-    const orderedMessages = (messages || []).reverse();
-
-    return orderedMessages.map((msg) => {
-      const senderData = Array.isArray(msg.sender) ? msg.sender[0] : msg.sender;
-      return {
-        id: msg.id,
-        content: msg.content,
-        created_at: msg.created_at,
-        sender_id: msg.sender_id,
-        conversation_id: msg.conversation_id,
-        is_read: msg.is_read,
-        sender: senderData ?? { id: msg.sender_id, name: null, avatar_url: null },
-      };
-    });
+    return (messages || []).reverse().map(this.formatMessage);
   }
 
   /**
@@ -133,16 +109,7 @@ export class MessageService {
       throw new Error("Failed to send message");
     }
 
-    const senderData = Array.isArray(message.sender) ? message.sender[0] : message.sender;
-    return {
-      id: message.id,
-      content: message.content,
-      created_at: message.created_at,
-      sender_id: message.sender_id,
-      conversation_id: message.conversation_id,
-      is_read: message.is_read,
-      sender: senderData ?? { id: message.sender_id, name: null, avatar_url: null },
-    };
+    return this.formatMessage(message);
   }
 
   /**
@@ -160,5 +127,42 @@ export class MessageService {
     }
 
     return participants?.map((p) => p.user_id) || [];
+  }
+
+  static async editMessage(messageId: number, senderId: number, content: string): Promise<MessageWithSender> {
+    const { data: message, error } = await supabase
+      .from("messages")
+      .update({ content, is_edited: true })
+      .eq("id", messageId)
+      .eq("sender_id", senderId) // Security: Only sender can edit
+      .eq("is_deleted", false)
+      .select(MESSAGE_SELECT)
+      .single();
+
+    if (error || !message) throw new Error("Failed to edit message or unauthorized");
+    return this.formatMessage(message);
+  }
+
+  static async deleteMessage(messageId: number, senderId: number): Promise<number> {
+    const { error } = await supabase
+      .from("messages")
+      .update({ content: null, is_deleted: true }) // Soft delete
+      .eq("id", messageId)
+      .eq("sender_id", senderId);
+
+    if (error) throw new Error("Failed to delete message or unauthorized");
+    return messageId;
+  }
+
+  private static formatMessage(msg: any): MessageWithSender {
+    const senderData = Array.isArray(msg.sender) ? msg.sender[0] : msg.sender;
+    const replyData = Array.isArray(msg.reply_to) ? msg.reply_to[0] : msg.reply_to;
+    const replySender = replyData ? (Array.isArray(replyData.sender) ? replyData.sender[0] : replyData.sender) : null;
+
+    return {
+      ...msg,
+      sender: senderData ?? { id: msg.sender_id, name: null, avatar_url: null },
+      reply_to: replyData ? { content: replyData.content, sender: { name: replySender?.name || null } } : null,
+    };
   }
 }

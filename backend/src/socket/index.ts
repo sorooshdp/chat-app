@@ -302,3 +302,13 @@ export function emitNewConversation(userId: number, conversation: {
   io.to(`user:${userId}`).emit('conversation:new', conversation);
   console.log(`Emitted conversation:new to user:${userId}`);
 }
+
+export function emitMessageUpdated(conversationId: number, message: any): void {
+  if (!io) return;
+  io.to(`conversation:${conversationId}`).emit('message:update', message);
+}
+
+export function emitMessageDeleted(conversationId: number, messageId: number): void {
+  if (!io) return;
+  io.to(`conversation:${conversationId}`).emit('message:delete', { id: messageId });
+}
