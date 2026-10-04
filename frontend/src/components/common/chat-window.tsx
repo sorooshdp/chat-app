@@ -4,16 +4,8 @@ import { useEffect, useRef, useCallback } from "react";
 import type { JSX } from "react";
 import type { ConversationWithDetails } from "@/lib/types/api";
 import { getDisplayName } from "@/lib/utils/conversation";
-import {
-  ChatHeader,
-  MessageList,
-  MessageInput,
-} from "@/components/chat";
-import {
-  useCurrentUser,
-  useChatMessages,
-  useChatSocket,
-} from "@/hooks";
+import { ChatHeader, MessageList, MessageInput } from "@/components/chat";
+import { useCurrentUser, useChatMessages, useChatSocket } from "@/hooks";
 
 interface ChatWindowProps {
   conversation: ConversationWithDetails | null;
@@ -28,11 +20,7 @@ interface ChatWindowProps {
  * - useChatMessages: Manages message state and operations
  * - useChatSocket: Handles real-time socket subscriptions
  */
-export function ChatWindow({
-  conversation,
-  onClose,
-  isOtherUserOnline = false,
-}: ChatWindowProps): JSX.Element {
+export function ChatWindow({ conversation, onClose, isOtherUserOnline = false }: ChatWindowProps): JSX.Element {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentUserId = useCurrentUser();
 
@@ -45,7 +33,7 @@ export function ChatWindow({
 
   // Message state and operations
   const {
-    messages,
+messages,
     setMessages,
     messageInput,
     isLoading,
@@ -55,9 +43,14 @@ export function ChatWindow({
     handleSendMessage,
     handleLoadMore,
     handleRetry,
-    handleDeleteFailed,
+    handleDeleteMessage, 
     loadInitialMessages,
     typingTimeoutRef,
+    editingMessage,      
+    replyingTo,          
+    handleEditInit,      
+    handleReplyInit,     
+    handleCancelAction,  
   } = useChatMessages({
     conversationId, // Use ID instead of full object
     currentUserId,
@@ -90,9 +83,7 @@ export function ChatWindow({
     return (
       <main className="flex-1 hidden md:flex items-center justify-center bg-linear-to-br from-black via-slate-900 to-blue-950">
         <div className="text-center">
-          <p className="text-slate-400 text-lg">
-            Select a conversation to start chatting
-          </p>
+          <p className="text-slate-400 text-lg">Select a conversation to start chatting</p>
         </div>
       </main>
     );
@@ -103,12 +94,7 @@ export function ChatWindow({
 
   return (
     <main className="flex-1 flex flex-col h-screen md:h-screen bg-linear-to-br from-black via-slate-900 to-blue-950 overflow-hidden">
-      <ChatHeader
-        displayName={displayName}
-        avatarUrl={avatarUrl}
-        isOnline={isOtherUserOnline}
-        onBack={onClose}
-      />
+      <ChatHeader displayName={displayName} avatarUrl={avatarUrl} isOnline={isOtherUserOnline} onBack={onClose} />
 
       <MessageList
         ref={messagesEndRef}
@@ -120,13 +106,18 @@ export function ChatWindow({
         isTyping={isTyping}
         onLoadMore={handleLoadMore}
         onRetry={handleRetry}
-        onDelete={handleDeleteFailed}
+        onDelete={handleDeleteMessage}
+        onEdit={handleEditInit}
+        onReply={handleReplyInit}
       />
 
       <MessageInput
         value={messageInput}
         onChange={handleInputChange}
         onSubmit={handleSendMessage}
+        editingMessage={editingMessage}
+        replyingTo={replyingTo}
+        onCancelAction={handleCancelAction}
       />
     </main>
   );
