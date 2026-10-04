@@ -66,11 +66,11 @@ export interface CreateConversationResponse {
  * Message with sender details for chat display
  */
 export interface MessageWithSender extends Message {
-  sender: {
-    id: number;
-    name: string | null;
-    avatar_url: string | null;
-  };
+  is_edited: boolean;
+  is_deleted: boolean;
+  reply_to_id: number | null;
+  sender: { id: number; name: string | null; avatar_url: string | null; };
+  reply_to?: { content: string | null; sender: { name: string | null } } | null;
 }
 
 /**

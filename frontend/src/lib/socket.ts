@@ -314,3 +314,29 @@ export function onMessagesRead(callback: (event: MessagesReadEvent) => void): ()
     socket?.off('messages:read', callback);
   };
 }
+
+/**
+ * Subscribe to message edit/update events
+ */
+export function onMessageUpdated(callback: (message: SocketMessage) => void): () => void {
+  if (!socket) return () => {};
+  
+  socket.on('message:update', callback);
+  
+  return () => {
+    socket?.off('message:update', callback);
+  };
+}
+
+/**
+ * Subscribe to message deletion events
+ */
+export function onMessageDeleted(callback: (data: { id: number }) => void): () => void {
+  if (!socket) return () => {};
+  
+  socket.on('message:delete', callback);
+  
+  return () => {
+    socket?.off('message:delete', callback);
+  };
+}

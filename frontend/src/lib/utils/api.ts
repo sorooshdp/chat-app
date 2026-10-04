@@ -1,7 +1,6 @@
 import type {
   UserProfile,
   CreateConversationResponse,
-  SendMessageResponse,
   MessageWithSender,
   ConversationWithDetails,
 } from "@/lib/types/api";
@@ -90,27 +89,32 @@ export async function fetchMessages(
 /**
  * Send a message to a conversation
  */
-export async function sendMessage(
-  conversationId: number,
-  content: string,
-  token: string
-): Promise<MessageWithSender> {
+export async function sendMessage(conversationId: number, content: string, token: string, replyToId?: string): Promise<MessageWithSender> {
   const response = await fetch(`${API_URL}/api/messages/${conversationId}`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ content, replyToId }), // Pass replyToId
+  });
+  if (!response.ok) throw new Error("Failed to send message");
+  return (await response.json()).message;
+}
+
+export async function editMessage(conversationId: number, messageId: string, content: string, token: string): Promise<MessageWithSender> {
+  const response = await fetch(`${API_URL}/api/messages/${conversationId}/${messageId}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   });
+  if (!response.ok) throw new Error("Failed to edit message");
+  return (await response.json()).message;
+}
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to send message");
-  }
-
-  const data: SendMessageResponse = await response.json();
-  return data.message;
+export async function deleteMessage(conversationId: number, messageId: string, token: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/messages/${conversationId}/${messageId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error("Failed to delete message");
 }
 
 /**
