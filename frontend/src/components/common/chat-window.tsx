@@ -78,7 +78,7 @@ export function ChatWindow({
     if (conversationId !== null) {
       loadInitialMessages();
     }
-  }, [conversationId]); // Only depend on ID, not loadInitialMessages
+  }, [conversationId, loadInitialMessages]);
 
   // Auto-scroll when new messages arrive
   useEffect(() => {

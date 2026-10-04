@@ -99,7 +99,7 @@ export function useChatSocket({
 
       onScrollToBottom();
     },
-    [conversationId, setMessages, onScrollToBottom]
+    [conversationId, setMessages, onScrollToBottom, currentUserId]
   );
 
   // Socket connection and subscriptions
