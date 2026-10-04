@@ -9,7 +9,7 @@ const nextConfig = {
           {
             key: 'X-Frame-Options',
             value: 'DENY', // Prevents site from being framed (clickjacking protection)
-          },,
+          },
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff', // Prevents the browser from guessing the content type
