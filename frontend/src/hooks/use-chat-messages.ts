@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import type { MessageWithSender } from "@/lib/types/api";
 import type { LocalMessage } from "@/components/chat";
 import { getAuthToken } from "@/lib/utils/auth";
-import { fetchMessages, sendMessage } from "@/lib/utils/api";
+import { deleteMessage, editMessage, fetchMessages, sendMessage } from "@/lib/utils/api";
 import { emitTypingStart, emitTypingStop } from "@/lib/socket";
 
 function toLocalMessage(msg: MessageWithSender): LocalMessage {
@@ -17,6 +17,9 @@ function toLocalMessage(msg: MessageWithSender): LocalMessage {
     status: "sent",
     isLocal: false,
     is_read: msg.is_read,
+    is_edited: msg.is_edited ?? false,
+    is_deleted: msg.is_deleted ?? false,
+    reply_to: msg.reply_to ?? null,
   };
 }
 
@@ -41,6 +44,12 @@ interface UseChatMessagesReturn {
   loadInitialMessages: () => Promise<void>;
   typingTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>;
   isTypingRef: React.MutableRefObject<boolean>;
+  editingMessage: { id: string; content: string } | null;
+  replyingTo: { id: string; senderName: string | null; content: string } | null;
+  handleEditInit: (id: string, content: string) => void;
+  handleReplyInit: (id: string, senderName: string | null, content: string) => void;
+  handleCancelAction: () => void;
+  handleDeleteMessage: (id: string) => Promise<void>;
 }
 
 /**
@@ -59,6 +68,24 @@ export function useChatMessages({
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef<boolean>(false);
+  const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; senderName: string | null; content: string } | null>(null);
+
+  const handleEditInit = useCallback((id: string, content: string) => {
+    setEditingMessage({ id, content });
+    setReplyingTo(null);
+    setMessageInput(content);
+  }, []);
+  const handleReplyInit = useCallback((id: string, senderName: string | null, content: string) => {
+    setReplyingTo({ id, senderName, content });
+    setEditingMessage(null);
+    setMessageInput("");
+  }, []);
+  const handleCancelAction = useCallback(() => {
+    setEditingMessage(null);
+    setReplyingTo(null);
+    setMessageInput("");
+  }, []);
 
   // Load initial messages for a conversation
   const loadInitialMessages = useCallback(async (): Promise<void> => {
@@ -79,11 +106,7 @@ export function useChatMessages({
         return;
       }
 
-      const { messages: fetchedMessages, hasMore } = await fetchMessages(
-        conversationId,
-        token,
-        MESSAGE_LIMIT
-      );
+      const { messages: fetchedMessages, hasMore } = await fetchMessages(conversationId, token, MESSAGE_LIMIT);
       setMessages(fetchedMessages.map(toLocalMessage));
       setHasMoreMessages(hasMore);
       setTimeout(onScrollToBottom, 100);
@@ -122,7 +145,7 @@ export function useChatMessages({
         emitTypingStop(conversationId);
       }
     },
-    [conversationId]
+    [conversationId],
   );
 
   // Load more (older) messages
@@ -137,12 +160,7 @@ export function useChatMessages({
         return;
       }
       const oldestMessage = messages[0];
-      const { messages: olderMessages, hasMore } = await fetchMessages(
-        conversationId,
-        token,
-        50,
-        oldestMessage?.id
-      );
+      const { messages: olderMessages, hasMore } = await fetchMessages(conversationId, token, 50, oldestMessage?.id);
 
       if (olderMessages.length > 0) {
         setMessages((prev) => [...olderMessages.map(toLocalMessage), ...prev]);
@@ -164,6 +182,22 @@ export function useChatMessages({
 
       if (conversationId === null || !messageInput.trim() || currentUserId === null) return;
 
+      const content = messageInput.trim();
+      const token = getAuthToken()!;
+
+      if (editingMessage) {
+        try {
+          const updated = await editMessage(conversationId, editingMessage.id, content, token);
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === editingMessage.id ? { ...toLocalMessage(updated), isLocal: true } : msg)),
+          );
+          handleCancelAction();
+        } catch (err) {
+          console.error("Edit failed");
+        }
+        return;
+      }
+
       // Stop typing indicator
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
@@ -173,7 +207,6 @@ export function useChatMessages({
         emitTypingStop(conversationId);
       }
 
-      const content = messageInput.trim();
       const tempId = `temp-${Date.now()}`;
 
       // Optimistic update - create placeholder message
@@ -206,39 +239,41 @@ export function useChatMessages({
 
         // Replace temp message with real one
         setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempId
-              ? { ...toLocalMessage(sentMessage), isLocal: true }
-              : msg
-          )
+          prev.map((msg) => (msg.id === tempId ? { ...toLocalMessage(sentMessage), isLocal: true } : msg)),
         );
       } catch (error) {
         console.error("Error sending message:", error);
 
         // Mark as failed
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempId ? { ...msg, status: "failed" as const } : msg
-          )
-        );
+        setMessages((prev) => prev.map((msg) => (msg.id === tempId ? { ...msg, status: "failed" as const } : msg)));
+      }
+
+      handleCancelAction();
+    },
+    [conversationId, messageInput, currentUserId],
+  );
+
+  const handleDeleteMessage = useCallback(
+    async (id: string) => {
+      if (!conversationId) return;
+      try {
+        await deleteMessage(conversationId, id, getAuthToken()!);
+        // Optimistic delete
+        setMessages((prev) => prev.map((msg) => (msg.id === id ? { ...msg, is_deleted: true, content: "" } : msg)));
+      } catch (err) {
+        console.error("Delete failed");
       }
     },
-    [conversationId, messageInput, currentUserId]
+    [conversationId],
   );
 
   // Retry sending a failed message
   const handleRetry = useCallback(
     async (messageId: string): Promise<void> => {
-      const failedMessage = messages.find(
-        (msg) => msg.id === messageId && msg.status === "failed"
-      );
+      const failedMessage = messages.find((msg) => msg.id === messageId && msg.status === "failed");
       if (!failedMessage || conversationId === null) return;
 
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId ? { ...msg, status: "sending" as const } : msg
-        )
-      );
+      setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, status: "sending" as const } : msg)));
 
       try {
         const token = getAuthToken();
@@ -247,30 +282,18 @@ export function useChatMessages({
           throw new Error("No auth token found");
         }
 
-        const sentMessage = await sendMessage(
-          conversationId,
-          failedMessage.content,
-          token
-        );
+        const sentMessage = await sendMessage(conversationId, failedMessage.content, token);
 
         setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === messageId
-              ? { ...toLocalMessage(sentMessage), isLocal: true }
-              : msg
-          )
+          prev.map((msg) => (msg.id === messageId ? { ...toLocalMessage(sentMessage), isLocal: true } : msg)),
         );
       } catch (error) {
         console.error("Error retrying message:", error);
 
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === messageId ? { ...msg, status: "failed" as const } : msg
-          )
-        );
+        setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, status: "failed" as const } : msg)));
       }
     },
-    [conversationId, messages]
+    [conversationId, messages],
   );
 
   // Delete a failed message
@@ -293,5 +316,11 @@ export function useChatMessages({
     loadInitialMessages,
     typingTimeoutRef,
     isTypingRef,
+    editingMessage,
+    replyingTo,
+    handleEditInit,
+    handleReplyInit,
+    handleCancelAction,
+    handleDeleteMessage,
   };
 }

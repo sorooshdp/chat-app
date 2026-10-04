@@ -14,6 +14,8 @@ import {
   SocketMessage,
   TypingEvent,
   MessagesReadEvent,
+  onMessageUpdated,
+  onMessageDeleted,
 } from "@/lib/socket";
 
 interface UseChatSocketOptions {
@@ -73,7 +75,7 @@ export function useChatSocket({
             msg.isLocal &&
             msg.sender_id === processedMessage.sender_id &&
             msg.content === processedMessage.content &&
-            msg.status === "sending"
+            msg.status === "sending",
         );
 
         if (localMessageIndex !== -1) {
@@ -99,12 +101,26 @@ export function useChatSocket({
 
       onScrollToBottom();
     },
-    [conversationId, setMessages, onScrollToBottom, currentUserId]
+    [conversationId, setMessages, onScrollToBottom, currentUserId],
   );
 
   // Socket connection and subscriptions
   useEffect(() => {
     if (!conversationId || currentUserId === null) return;
+
+    const unsubscribeUpdate = onMessageUpdated((updatedMsg: SocketMessage) => {
+      if (updatedMsg.conversation_id !== conversationId) return;
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === updatedMsg.id.toString() ? { ...msg, content: updatedMsg.content ?? "", is_edited: true } : msg,
+        ),
+      );
+    });
+    const unsubscribeDelete = onMessageDeleted((data: { id: string | number }) => {
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === data.id.toString() ? { ...msg, content: "", is_deleted: true } : msg)),
+      );
+    });
 
     // Connect to socket and join conversation room
     try {
@@ -138,11 +154,7 @@ export function useChatSocket({
     // Subscribe to messages read events
     const unsubscribeMessagesRead = onMessagesRead((event: MessagesReadEvent) => {
       if (event.conversationId !== conversationId) return;
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.sender_id === currentUserId ? { ...msg, is_read: true } : msg
-        )
-      );
+      setMessages((prev) => prev.map((msg) => (msg.sender_id === currentUserId ? { ...msg, is_read: true } : msg)));
     });
 
     // Cleanup on unmount or conversation change
@@ -151,6 +163,8 @@ export function useChatSocket({
       unsubscribeTypingStart();
       unsubscribeTypingStop();
       unsubscribeMessagesRead();
+      unsubscribeUpdate();
+      unsubscribeDelete();
       leaveConversation(conversationId);
       setTypingUsers(new Set());
 
@@ -159,13 +173,7 @@ export function useChatSocket({
         typingTimeoutRef.current = null;
       }
     };
-  }, [
-    conversationId,
-    currentUserId,
-    processIncomingMessage,
-    setMessages,
-    typingTimeoutRef,
-  ]);
+  }, [conversationId, currentUserId, processIncomingMessage, setMessages, typingTimeoutRef]);
 
   return {
     typingUsers,
