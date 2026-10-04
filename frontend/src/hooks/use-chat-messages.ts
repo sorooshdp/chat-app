@@ -192,8 +192,8 @@ export function useChatMessages({
             prev.map((msg) => (msg.id === editingMessage.id ? { ...toLocalMessage(updated), isLocal: true } : msg)),
           );
           handleCancelAction();
-        } catch (err) {
-          console.error("Edit failed");
+        } catch (error) {
+          console.error("Edit failed", error);
         }
         return;
       }
@@ -250,7 +250,7 @@ export function useChatMessages({
 
       handleCancelAction();
     },
-    [conversationId, messageInput, currentUserId],
+    [conversationId, messageInput, currentUserId, editingMessage, handleCancelAction],
   );
 
   const handleDeleteMessage = useCallback(
@@ -260,8 +260,8 @@ export function useChatMessages({
         await deleteMessage(conversationId, id, getAuthToken()!);
         // Optimistic delete
         setMessages((prev) => prev.map((msg) => (msg.id === id ? { ...msg, is_deleted: true, content: "" } : msg)));
-      } catch (err) {
-        console.error("Delete failed");
+      } catch (error) {
+        console.error("Delete faild", error)
       }
     },
     [conversationId],
