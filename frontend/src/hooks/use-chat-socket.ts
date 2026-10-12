@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { LocalMessage } from "@/components/chat";
 import {
   connectSocket,
+  getSocket,
   joinConversation,
   leaveConversation,
   onNewMessage,
@@ -133,6 +134,16 @@ export function useChatSocket({
       return;
     }
 
+    const socket = getSocket();
+    const handleReconnect = () => {
+      joinConversation(conversationId);
+      markConversationRead(conversationId);
+    };
+    
+    if (socket) {
+      socket.on("connect", handleReconnect);
+    }
+
     // Subscribe to new messages
     const unsubscribe = onNewMessage(processIncomingMessage);
 
@@ -160,6 +171,9 @@ export function useChatSocket({
 
     // Cleanup on unmount or conversation change
     return () => {
+      if (socket) {
+        socket.off("connect", handleReconnect); 
+      }
       unsubscribe();
       unsubscribeTypingStart();
       unsubscribeTypingStop();

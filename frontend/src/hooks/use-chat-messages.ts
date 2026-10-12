@@ -262,7 +262,7 @@ export function useChatMessages({
 
       handleCancelAction();
     },
-    [conversationId, messageInput, currentUserId, editingMessage, handleCancelAction],
+    [conversationId, messageInput, currentUserId, editingMessage, handleCancelAction, replyingTo],
   );
 
   const handleDeleteMessage = useCallback(
