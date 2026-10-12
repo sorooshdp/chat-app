@@ -68,32 +68,47 @@ export function useChatSocket({
         const existsById = prev.some((msg) => msg.id === processedMessage.id);
         if (existsById) return prev;
 
+        // FALLBACK: if the socket did not carry reply_to but carries
+        // reply_to_id, resolve the parent from the already-loaded messages.
+        // This makes the receiver render the reply preview even when the
+        // server emits a stripped payload.
+        let replyTo = processedMessage.reply_to;
+        if (!replyTo && processedMessage.reply_to_id) {
+          const parent = prev.find((m) => m.id === processedMessage.reply_to_id);
+          if (parent) {
+            replyTo = {
+              content: parent.content,
+              sender: { name: parent.sender.name },
+            };
+          }
+        }
+
+        const withReply: LocalMessage = {
+          ...processedMessage,
+          reply_to: replyTo,
+        };
+
         // Replace the optimistic message if one matches.
         const localMessageIndex = prev.findIndex(
           (msg) =>
             msg.isLocal &&
-            msg.sender_id === processedMessage.sender_id &&
-            msg.content === processedMessage.content &&
+            msg.sender_id === withReply.sender_id &&
+            msg.content === withReply.content &&
             msg.status === "sending",
         );
 
         if (localMessageIndex !== -1) {
           const updated = [...prev];
           const optimistic = updated[localMessageIndex]!;
-
           updated[localMessageIndex] = {
-            ...processedMessage,
-            // Preserve reply metadata from the optimistic message when the
-            // socket event did not include it. This is the fix for
-            // "reply preview disappears after send".
-            reply_to: processedMessage.reply_to ?? optimistic.reply_to ?? null,
-            reply_to_id: processedMessage.reply_to_id ?? optimistic.reply_to_id ?? null,
+            ...withReply,
+            reply_to: withReply.reply_to ?? optimistic.reply_to ?? null,
+            reply_to_id: withReply.reply_to_id ?? optimistic.reply_to_id ?? null,
           };
           return updated;
         }
 
-        // Otherwise it's a genuinely new message from someone else.
-        return [...prev, processedMessage];
+        return [...prev, withReply];
       });
 
       if (newMsg.sender_id !== currentUserId) {
