@@ -57,7 +57,7 @@ export class MessageController {
       }
 
       const conversationId = parseInt(conversationIdParam);
-      const { content } = req.body;
+      const { content, replyToId } = req.body;
 
       if (isNaN(conversationId)) {
         res.status(400).json({ error: "Invalid conversation ID" });
@@ -74,7 +74,15 @@ export class MessageController {
         return;
       }
 
-      const message = await MessageService.sendMessage(conversationId, req.user.id, content.trim());
+      const parsedReplyToId = replyToId ? parseInt(replyToId) : undefined;
+
+      // Pass the parsed replyToId to the service
+      const message = await MessageService.sendMessage(
+        conversationId, 
+        req.user.id, 
+        content.trim(),
+        parsedReplyToId
+      );
 
       // Emit the message to all connected clients in the conversation room
       emitNewMessage(conversationId, message);

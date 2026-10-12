@@ -66,7 +66,12 @@ export class MessageService {
   /**
    * Send a message in a conversation
    */
-  static async sendMessage(conversationId: number, senderId: number, content: string): Promise<MessageWithSender> {
+  static async sendMessage(
+    conversationId: number,
+    senderId: number,
+    content: string,
+    replyToId?: number,
+  ): Promise<MessageWithSender> {
     // Verify user is participant
     const { data: participant } = await supabase
       .from("conversation_participants")
@@ -86,22 +91,9 @@ export class MessageService {
         conversation_id: conversationId,
         sender_id: senderId,
         content,
+        reply_to_id: replyToId || null,
       })
-      .select(
-        `
-        id,
-        content,
-        created_at,
-        sender_id,
-        conversation_id,
-        is_read,
-        sender:users!sender_id (
-          id,
-          name,
-          avatar_url
-        )
-      `,
-      )
+      .select(MESSAGE_SELECT) 
       .single();
 
     if (error) {
