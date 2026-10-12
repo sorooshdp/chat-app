@@ -1,12 +1,10 @@
-import { io, Socket } from 'socket.io-client';
-import { getAuthToken } from './utils/auth';
-import type { ConversationWithDetails } from './types/api';
+import { io, Socket } from "socket.io-client";
+import { getAuthToken } from "./utils/auth";
+import type { ConversationWithDetails } from "./types/api";
 
-// Socket instance singleton
-let socket: Socket | null = null;
-
-// Get the backend URL from environment variable
-const SOCKET_URL = process.env["NEXT_PUBLIC_API_URL"] || 'http://localhost:3000';
+/* ------------------------------------------------------------------ */
+/* Types                                                              */
+/* ------------------------------------------------------------------ */
 
 export interface SocketMessage {
   id: number;
@@ -20,6 +18,7 @@ export interface SocketMessage {
     avatar_url: string | null;
   };
   reply_to?: { content: string | null; sender: { name: string | null } } | null;
+  reply_to_id?: number | null;
 }
 
 export interface TypingEvent {
@@ -36,266 +35,26 @@ export interface PresenceListEvent {
 }
 
 /**
- * Initialize or get the socket connection
+ * Payload emitted by the server on `conversation:update`.
+ * Widen lastMessage so the conversation list can render richer previews
+ * (id, sender name, reply). If your server sends a narrower shape, drop
+ * the extra fields here and the client still compiles — TS will just
+ * not complain because we only read what we use.
  */
-export function getSocket(): Socket | null {
-  return socket;
-}
-
-/**
- * Connect to the Socket.IO server with JWT authentication
- */
-export function connectSocket(): Socket {
-  const token = getAuthToken();
-
-  if (!token) {
-    throw new Error('No auth token available for socket connection');
-  }
-
-  // If socket exists and is connected, return it
-  if (socket?.connected) {
-    return socket;
-  }
-
-  // If socket exists but disconnected, reconnect with same instance
-  if (socket) {
-    socket.auth = { token };
-    socket.connect();
-    return socket;
-  }
-
-  // Create new socket connection with auth
-  socket = io(SOCKET_URL, {
-    auth: { token },
-    transports: ['websocket', 'polling'],
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    autoConnect: true,
-  });
-
-  socket.onAny((event, ...args) => console.debug("[socket in]", event, args));
-
-  socket.on('connect', () => {
-    console.log('Socket connected:', socket?.id);
-  });
-
-  socket.on('disconnect', (reason) => {
-    console.log('Socket disconnected:', reason);
-  });
-
-  socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error.message);
-  });
-
-  return socket;
-}
-
-/**
- * Disconnect the socket
- */
-export function disconnectSocket(): void {
-  if (socket) {
-    socket.disconnect();
-    socket = null;
-  }
-}
-
-/**
- * Join a conversation room to receive messages
- * Waits for connection if not yet connected
- */
-export function joinConversation(conversationId: number): void {
-  if (!socket) {
-    console.warn('Socket not initialized, cannot join conversation');
-    return;
-  }
-
-  const doJoin = () => {
-    socket?.emit('join:conversation', { conversationId });
-    console.log(`Joining conversation room: ${conversationId}`);
-  };
-
-  if (socket.connected) {
-    doJoin();
-  } else {
-    // Wait for connection before joining
-    socket.once('connect', doJoin);
-  }
-}
-
-/**
- * Leave a conversation room
- */
-export function leaveConversation(conversationId: number): void {
-  if (!socket?.connected) {
-    return;
-  }
-  socket.emit('leave:conversation', { conversationId });
-}
-
-/**
- * Subscribe to new messages in the current conversation
- */
-export function onNewMessage(callback: (message: SocketMessage) => void): () => void {
-  if (!socket) {
-    console.warn('Socket not initialized');
-    return () => {};
-  }
-
-  socket.on('message:new', callback);
-
-  // Return cleanup function
-  return () => {
-    socket?.off('message:new', callback);
-  };
-}
-
-/**
- * Subscribe to typing start events
- */
-export function onTypingStart(callback: (event: TypingEvent) => void): () => void {
-  if (!socket) {
-    return () => {};
-  }
-
-  socket.on('typing:start', callback);
-
-  return () => {
-    socket?.off('typing:start', callback);
-  };
-}
-
-/**
- * Subscribe to typing stop events
- */
-export function onTypingStop(callback: (event: TypingEvent) => void): () => void {
-  if (!socket) {
-    return () => {};
-  }
-
-  socket.on('typing:stop', callback);
-
-  return () => {
-    socket?.off('typing:stop', callback);
-  };
-}
-
-/**
- * Emit typing start event
- */
-export function emitTypingStart(conversationId: number): void {
-  if (!socket?.connected) {
-    return;
-  }
-  socket.emit('typing:start', { conversationId });
-}
-
-/**
- * Emit typing stop event
- */
-export function emitTypingStop(conversationId: number): void {
-  if (!socket?.connected) {
-    return;
-  }
-  socket.emit('typing:stop', { conversationId });
-}
-
 export interface ConversationUpdateEvent {
   conversationId: number;
   lastMessage: {
+    id?: number;
     content: string | null;
     created_at: string;
     sender_id: number;
+    sender?: {
+      id: number;
+      name: string | null;
+      avatar_url: string | null;
+    };
+    reply_to?: { content: string | null; sender: { name: string | null } } | null;
   };
-}
-
-/**
- * Subscribe to conversation list updates (new messages in any conversation)
- */
-export function onConversationUpdate(callback: (event: ConversationUpdateEvent) => void): () => void {
-  if (!socket) {
-    console.warn('Socket not initialized');
-    return () => {};
-  }
-
-  socket.on('conversation:update', callback);
-
-  return () => {
-    socket?.off('conversation:update', callback);
-  };
-}
-
-/**
- * Subscribe to new conversation events (when someone creates a conversation with you)
- */
-export function onNewConversation(callback: (conversation: ConversationWithDetails) => void): () => void {
-  if (!socket) {
-    console.warn('Socket not initialized');
-    return () => {};
-  }
-
-  socket.on('conversation:new', callback);
-
-  return () => {
-    socket?.off('conversation:new', callback);
-  };
-}
-
-/**
- * Subscribe to presence online events
- */
-export function onPresenceOnline(callback: (event: PresenceEvent) => void): () => void {
-  if (!socket) {
-    return () => {};
-  }
-
-  socket.on('presence:online', callback);
-
-  return () => {
-    socket?.off('presence:online', callback);
-  };
-}
-
-/**
- * Subscribe to presence offline events
- */
-export function onPresenceOffline(callback: (event: PresenceEvent) => void): () => void {
-  if (!socket) {
-    return () => {};
-  }
-
-  socket.on('presence:offline', callback);
-
-  return () => {
-    socket?.off('presence:offline', callback);
-  };
-}
-
-/**
- * Subscribe to initial presence list
- */
-export function onPresenceList(callback: (event: PresenceListEvent) => void): () => void {
-  if (!socket) {
-    return () => {};
-  }
-
-  socket.on('presence:list', callback);
-
-  return () => {
-    socket?.off('presence:list', callback);
-  };
-}
-
-/**
- * Mark a conversation as read
- */
-export function markConversationRead(conversationId: number): void {
-  if (!socket?.connected) {
-    return;
-  }
-  socket.emit('conversation:markRead', { conversationId });
 }
 
 export interface MessagesReadEvent {
@@ -303,43 +62,336 @@ export interface MessagesReadEvent {
   readBy: number;
 }
 
+/* ------------------------------------------------------------------ */
+/* Module-level singleton                                             */
+/* ------------------------------------------------------------------ */
+
+let socket: Socket | null = null;
+
 /**
- * Subscribe to messages read events (when someone reads your messages)
+ * Rooms the client is logically subscribed to. Kept in a Set so that
+ * after a reconnect (which drops all room memberships server-side),
+ * we can re-join them automatically. This is the fix for
+ * "real-time stops working after a reconnect".
  */
-export function onMessagesRead(callback: (event: MessagesReadEvent) => void): () => void {
-  if (!socket) {
-    return () => {};
+const joinedRooms = new Set<number>();
+
+/** Attached once, not per-socket-instance. */
+let globalListenersAttached = false;
+
+const SOCKET_URL =
+  process.env["NEXT_PUBLIC_API_URL"] || "http://localhost:3000";
+
+const isDev = process.env.NODE_ENV !== "production";
+
+function log(...args: unknown[]): void {
+  if (isDev) console.log(...args);
+}
+
+function warn(...args: unknown[]): void {
+  if (isDev) console.warn(...args);
+}
+
+/* ------------------------------------------------------------------ */
+/* Connection lifecycle                                               */
+/* ------------------------------------------------------------------ */
+
+export function getSocket(): Socket | null {
+  return socket;
+}
+
+/**
+ * Idempotent: returns the existing socket if connected, reconnects it
+ * if disconnected, creates it otherwise. Throws only if no token exists.
+ */
+export function connectSocket(): Socket {
+  const token = getAuthToken();
+
+  if (!token) {
+    throw new Error("No auth token available for socket connection");
   }
 
-  socket.on('messages:read', callback);
+  // Already connected — keep the instance, refresh auth in case the
+  // token rotated (e.g. after login refresh).
+  if (socket?.connected) {
+    socket.auth = { token };
+    return socket;
+  }
 
-  return () => {
-    socket?.off('messages:read', callback);
-  };
+  // Exists but disconnected — update auth and reconnect the same instance.
+  // Listeners registered against this instance remain valid.
+  if (socket) {
+    socket.auth = { token };
+    socket.connect();
+    return socket;
+  }
+
+  // First-time creation.
+  socket = io(SOCKET_URL, {
+    auth: { token },
+    transports: ["websocket", "polling"],
+    reconnection: true,
+    // Bump attempts. The default give-up-after-5 behaviour is what
+    // silently kills real-time for long-lived tabs.
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    autoConnect: true,
+    withCredentials: true,
+  });
+
+  if (isDev) {
+    socket.onAny((event, ...args) => console.debug("[socket in]", event, args));
+  }
+
+  socket.on("connect", () => {
+    log("Socket connected:", socket?.id);
+
+    // Re-join every room we think we're in. First connect is a no-op
+    // for this loop because joinedRooms is only populated by
+    // joinConversation(), which is called after mount.
+    for (const conversationId of joinedRooms) {
+      socket?.emit("join:conversation", { conversationId });
+      log(`Re-joining conversation room: ${conversationId}`);
+    }
+  });
+
+  socket.on("disconnect", (reason) => {
+    log("Socket disconnected:", reason);
+  });
+
+  socket.on("connect_error", (error) => {
+    console.error("Socket connection error:", error.message);
+  });
+
+  attachGlobalRecoveryListeners();
+
+  return socket;
 }
 
 /**
- * Subscribe to message edit/update events
+ * Reconnect on tab focus / network recovery. Socket.IO handles
+ * reconnection on its own, but if the browser has suspended the tab
+ * (mobile Safari, laptop sleep), the backoff timer can be very stale.
  */
-export function onMessageUpdated(callback: (message: SocketMessage) => void): () => void {
-  if (!socket) return () => {};
-  
-  socket.on('message:update', callback);
-  
+function attachGlobalRecoveryListeners(): void {
+  if (globalListenersAttached) return;
+  if (typeof window === "undefined") return;
+  globalListenersAttached = true;
+
+  window.addEventListener("online", () => {
+    if (!socket?.connected) {
+      log("Network online — forcing socket reconnect");
+      socket?.connect();
+    }
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (
+      document.visibilityState === "visible" &&
+      socket &&
+      !socket.connected
+    ) {
+      log("Tab visible — forcing socket reconnect");
+      socket.connect();
+    }
+  });
+}
+
+export function disconnectSocket(): void {
+  if (!socket) return;
+  // Remove listeners first so any in-flight cleanup closures that
+  // captured this instance are no-ops, then disconnect.
+  socket.removeAllListeners();
+  socket.disconnect();
+  socket = null;
+  joinedRooms.clear();
+}
+
+/* ------------------------------------------------------------------ */
+/* Rooms                                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Join a conversation room. Safe to call before the socket is connected:
+ * the id is recorded and the actual emit happens on `connect`.
+ *
+ * Note: this is fire-and-forget. If you need to know the server has
+ * acked the join, extend this to accept a callback and add an ack
+ * handler on the server.
+ */
+export function joinConversation(conversationId: number): void {
+  joinedRooms.add(conversationId);
+
+  if (!socket) {
+    // connectSocket hasn't run yet; the id will be joined on connect.
+    return;
+  }
+
+  if (socket.connected) {
+    socket.emit("join:conversation", { conversationId });
+    log(`Joining conversation room: ${conversationId}`);
+  }
+  // If not connected, the 'connect' handler will flush joinedRooms.
+}
+
+export function leaveConversation(conversationId: number): void {
+  joinedRooms.delete(conversationId);
+  if (!socket?.connected) return;
+  socket.emit("leave:conversation", { conversationId });
+}
+
+/* ------------------------------------------------------------------ */
+/* Subscriptions                                                      */
+/* ------------------------------------------------------------------ */
+/*
+ * Every `on*` function captures the current socket instance in a local
+ * `s` and returns a cleanup that `off`s on that same instance. This
+ * fixes the case where a new socket is created after subscribe and the
+ * cleanup was previously calling `off` on the new one.
+ */
+
+export function onNewMessage(
+  callback: (message: SocketMessage) => void,
+): () => void {
+  const s = socket;
+  if (!s) {
+    warn("Socket not initialized for onNewMessage");
+    return () => {};
+  }
+  s.on("message:new", callback);
   return () => {
-    socket?.off('message:update', callback);
+    s.off("message:new", callback);
   };
 }
 
-/**
- * Subscribe to message deletion events
- */
-export function onMessageDeleted(callback: (data: { id: number }) => void): () => void {
-  if (!socket) return () => {};
-  
-  socket.on('message:delete', callback);
-  
+export function onTypingStart(
+  callback: (event: TypingEvent) => void,
+): () => void {
+  const s = socket;
+  if (!s) return () => {};
+  s.on("typing:start", callback);
   return () => {
-    socket?.off('message:delete', callback);
+    s.off("typing:start", callback);
+  };
+}
+
+export function onTypingStop(
+  callback: (event: TypingEvent) => void,
+): () => void {
+  const s = socket;
+  if (!s) return () => {};
+  s.on("typing:stop", callback);
+  return () => {
+    s.off("typing:stop", callback);
+  };
+}
+
+export function emitTypingStart(conversationId: number): void {
+  if (!socket?.connected) return;
+  socket.emit("typing:start", { conversationId });
+}
+
+export function emitTypingStop(conversationId: number): void {
+  if (!socket?.connected) return;
+  socket.emit("typing:stop", { conversationId });
+}
+
+export function onConversationUpdate(
+  callback: (event: ConversationUpdateEvent) => void,
+): () => void {
+  const s = socket;
+  if (!s) {
+    warn("Socket not initialized for onConversationUpdate");
+    return () => {};
+  }
+  s.on("conversation:update", callback);
+  return () => {
+    s.off("conversation:update", callback);
+  };
+}
+
+export function onNewConversation(
+  callback: (conversation: ConversationWithDetails) => void,
+): () => void {
+  const s = socket;
+  if (!s) {
+    warn("Socket not initialized for onNewConversation");
+    return () => {};
+  }
+  s.on("conversation:new", callback);
+  return () => {
+    s.off("conversation:new", callback);
+  };
+}
+
+export function onPresenceOnline(
+  callback: (event: PresenceEvent) => void,
+): () => void {
+  const s = socket;
+  if (!s) return () => {};
+  s.on("presence:online", callback);
+  return () => {
+    s.off("presence:online", callback);
+  };
+}
+
+export function onPresenceOffline(
+  callback: (event: PresenceEvent) => void,
+): () => void {
+  const s = socket;
+  if (!s) return () => {};
+  s.on("presence:offline", callback);
+  return () => {
+    s.off("presence:offline", callback);
+  };
+}
+
+export function onPresenceList(
+  callback: (event: PresenceListEvent) => void,
+): () => void {
+  const s = socket;
+  if (!s) return () => {};
+  s.on("presence:list", callback);
+  return () => {
+    s.off("presence:list", callback);
+  };
+}
+
+export function markConversationRead(conversationId: number): void {
+  if (!socket?.connected) return;
+  socket.emit("conversation:markRead", { conversationId });
+}
+
+export function onMessagesRead(
+  callback: (event: MessagesReadEvent) => void,
+): () => void {
+  const s = socket;
+  if (!s) return () => {};
+  s.on("messages:read", callback);
+  return () => {
+    s.off("messages:read", callback);
+  };
+}
+
+export function onMessageUpdated(
+  callback: (message: SocketMessage) => void,
+): () => void {
+  const s = socket;
+  if (!s) return () => {};
+  s.on("message:update", callback);
+  return () => {
+    s.off("message:update", callback);
+  };
+}
+
+export function onMessageDeleted(
+  callback: (data: { id: number }) => void,
+): () => void {
+  const s = socket;
+  if (!s) return () => {};
+  s.on("message:delete", callback);
+  return () => {
+    s.off("message:delete", callback);
   };
 }
