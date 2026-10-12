@@ -153,6 +153,7 @@ describe('MessageService', () => {
         conversation_id: 5,
         sender_id: 10,
         content: 'hi',
+        reply_to_id: null,
       });
       expect(message).toMatchObject({
         id: 12,
