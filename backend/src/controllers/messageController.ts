@@ -77,11 +77,15 @@ export class MessageController {
       const parsedReplyToId = replyToId ? parseInt(replyToId) : undefined;
 
       // Pass the parsed replyToId to the service
-      const message = await MessageService.sendMessage(
-        conversationId, 
-        req.user.id, 
-        content.trim(),
-        parsedReplyToId
+      const message = await MessageService.sendMessage(conversationId, req.user.id, content.trim(), parsedReplyToId);
+
+      console.log(
+        "[controller] sending to emitNewMessage:",
+        JSON.stringify({
+          id: message.id,
+          reply_to_id: message.reply_to_id,
+          reply_to: message.reply_to,
+        }),
       );
 
       // Emit the message to all connected clients in the conversation room
@@ -90,9 +94,11 @@ export class MessageController {
       // Emit conversation list update to all participants (for sidebar updates)
       const participantIds = await MessageService.getConversationParticipantIds(conversationId);
       emitConversationListUpdate(participantIds, conversationId, {
+        id: message.id,
         content: message.content,
         created_at: message.created_at,
         sender_id: message.sender_id,
+        reply_to: message.reply_to,
       });
 
       res.status(201).json({ message });
@@ -107,12 +113,16 @@ export class MessageController {
 
   static async editMessage(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      if (!req.user) { res.status(401).json({ error: "Unauthorized" }); return; }
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
       const messageId = parseInt(req.params.messageId!);
       const { content } = req.body;
 
       if (isNaN(messageId) || !content || content.trim().length === 0) {
-        res.status(400).json({ error: "Invalid data" }); return;
+        res.status(400).json({ error: "Invalid data" });
+        return;
       }
 
       const message = await MessageService.editMessage(messageId, req.user.id, content.trim());
@@ -125,12 +135,16 @@ export class MessageController {
 
   static async deleteMessage(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      if (!req.user) { res.status(401).json({ error: "Unauthorized" }); return; }
+      if (!req.user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
       const messageId = parseInt(req.params.messageId!);
       const conversationId = parseInt(req.params.conversationId!);
 
       if (isNaN(messageId) || isNaN(conversationId)) {
-        res.status(400).json({ error: "Invalid IDs" }); return;
+        res.status(400).json({ error: "Invalid IDs" });
+        return;
       }
 
       await MessageService.deleteMessage(messageId, req.user.id);

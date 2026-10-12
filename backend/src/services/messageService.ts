@@ -127,6 +127,15 @@ export class MessageService {
       throw new Error("Failed to send message");
     }
 
+    console.log(
+      "[sendMessage] refetched row:",
+      JSON.stringify({
+        id: message.id,
+        reply_to_id: message.reply_to_id,
+        reply_to: message.reply_to,
+      }),
+    );
+
     return this.formatMessage(message);
   }
 

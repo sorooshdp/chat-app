@@ -86,9 +86,7 @@ export function getOnlineUserIds(): number[] {
   return Array.from(onlineUsers.keys()).filter((userId) => isUserOnline(userId));
 }
 
-const allowedOrigins = (
-  process.env.FRONTEND_URL || "http://localhost:3000,http://localhost:3001"
-)
+const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:3000,http://localhost:3001")
   .split(",")
   .map((origin) => origin.trim());
 
@@ -190,13 +188,10 @@ export function initializeSocket(httpServer: HTTPServer): SocketIOServer {
           return;
         }
 
-        socket.to(`conversation:${payload.conversationId}`).emit(
-          "messages:read",
-          {
-            conversationId: payload.conversationId,
-            readBy: socket.user.id,
-          },
-        );
+        socket.to(`conversation:${payload.conversationId}`).emit("messages:read", {
+          conversationId: payload.conversationId,
+          readBy: socket.user.id,
+        });
       } catch (error) {
         console.error("Error marking conversation as read:", error);
       }
@@ -238,8 +233,7 @@ export function initializeSocket(httpServer: HTTPServer): SocketIOServer {
                   last_seen: new Date().toISOString(),
                 })
                 .eq("id", userId);
-              if (error)
-                console.error(`Failed to mark user ${userId} offline:`, error);
+              if (error) console.error(`Failed to mark user ${userId} offline:`, error);
               else console.log(`User ${userId} marked offline`);
             })();
           }
@@ -256,14 +250,20 @@ export function initializeSocket(httpServer: HTTPServer): SocketIOServer {
 /* Emitters                                                           */
 /* ------------------------------------------------------------------ */
 
-export function emitNewMessage(
-  conversationId: number,
-  message: OutgoingMessage,
-): void {
+export function emitNewMessage(conversationId: number, message: OutgoingMessage): void {
   if (!io) {
     console.warn("Socket.IO not initialized, cannot emit message");
     return;
   }
+
+  console.log(
+    "[emitNewMessage] payload:",
+    JSON.stringify({
+      id: message.id,
+      reply_to_id: message.reply_to_id,
+      reply_to: message.reply_to,
+    }),
+  );
 
   const roomName = `conversation:${conversationId}`;
   io.to(roomName).emit("message:new", message);
@@ -323,10 +323,7 @@ export function emitNewConversation(
   console.log(`Emitted conversation:new to user:${userId}`);
 }
 
-export function emitMessageUpdated(
-  conversationId: number,
-  message: OutgoingMessage,
-): void {
+export function emitMessageUpdated(conversationId: number, message: OutgoingMessage): void {
   if (!io) {
     console.warn("Socket.IO not initialized, cannot emit message update");
     return;
@@ -334,10 +331,7 @@ export function emitMessageUpdated(
   io.to(`conversation:${conversationId}`).emit("message:update", message);
 }
 
-export function emitMessageDeleted(
-  conversationId: number,
-  messageId: number,
-): void {
+export function emitMessageDeleted(conversationId: number, messageId: number): void {
   if (!io) {
     console.warn("Socket.IO not initialized, cannot emit message delete");
     return;
