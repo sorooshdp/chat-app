@@ -19,6 +19,7 @@ export interface SocketMessage {
     name: string | null;
     avatar_url: string | null;
   };
+  reply_to?: { content: string | null; sender: { name: string | null } } | null;
 }
 
 export interface TypingEvent {

@@ -62,6 +62,7 @@ export function useChatSocket({
         status: "sent",
         isLocal: false,
         is_read: false,
+        reply_to: newMsg.reply_to ?? null,
       };
 
       setMessages((prev) => {

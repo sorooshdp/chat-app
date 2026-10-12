@@ -203,7 +203,7 @@ describe("handleSendMessage", () => {
       await result.current.handleSendMessage(submitEvent());
     });
 
-    expect(mockedSend).toHaveBeenCalledWith(10, "hi", "test-token");
+expect(mockedSend).toHaveBeenCalledWith(10, "hi", "test-token", undefined);
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0]?.id).toBe("99");
     expect(result.current.messages[0]?.isLocal).toBe(true);
