@@ -22,6 +22,7 @@ export interface LocalMessage {
   is_edited?: boolean;
   is_deleted?: boolean;
   reply_to?: { content: string | null; sender: { name: string | null } } | null;
+  reply_to_id?: string | null;
 }
 
 interface MessageListProps {

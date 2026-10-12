@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import type { LocalMessage } from "@/components/chat";
 import {
   connectSocket,
-  getSocket,
   joinConversation,
   leaveConversation,
   onNewMessage,
@@ -32,10 +31,6 @@ interface UseChatSocketReturn {
   isTyping: boolean;
 }
 
-/**
- * Hook to manage Socket.IO subscriptions for chat
- * Handles real-time messages, typing indicators, and read receipts
- */
 export function useChatSocket({
   conversationId,
   currentUserId,
@@ -45,7 +40,6 @@ export function useChatSocket({
 }: UseChatSocketOptions): UseChatSocketReturn {
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
 
-  // Process incoming socket message
   const processIncomingMessage = useCallback(
     (newMsg: SocketMessage): void => {
       if (newMsg.conversation_id !== conversationId) return;
@@ -63,15 +57,18 @@ export function useChatSocket({
         status: "sent",
         isLocal: false,
         is_read: false,
+        is_edited: false,
+        is_deleted: false,
         reply_to: newMsg.reply_to ?? null,
+        reply_to_id: newMsg.reply_to_id != null ? newMsg.reply_to_id.toString() : null,
       };
 
       setMessages((prev) => {
-        // Check for exact ID match first (prevent duplicates)
+        // Idempotency: if the real message is already in the list, do nothing.
         const existsById = prev.some((msg) => msg.id === processedMessage.id);
         if (existsById) return prev;
 
-        // Check for local message that matches (optimistic update replacement)
+        // Replace the optimistic message if one matches.
         const localMessageIndex = prev.findIndex(
           (msg) =>
             msg.isLocal &&
@@ -82,11 +79,20 @@ export function useChatSocket({
 
         if (localMessageIndex !== -1) {
           const updated = [...prev];
-          updated[localMessageIndex] = processedMessage;
+          const optimistic = updated[localMessageIndex]!;
+
+          updated[localMessageIndex] = {
+            ...processedMessage,
+            // Preserve reply metadata from the optimistic message when the
+            // socket event did not include it. This is the fix for
+            // "reply preview disappears after send".
+            reply_to: processedMessage.reply_to ?? optimistic.reply_to ?? null,
+            reply_to_id: processedMessage.reply_to_id ?? optimistic.reply_to_id ?? null,
+          };
           return updated;
         }
 
-        // New message from someone else
+        // Otherwise it's a genuinely new message from someone else.
         return [...prev, processedMessage];
       });
 
@@ -94,7 +100,6 @@ export function useChatSocket({
         markConversationRead(newMsg.conversation_id);
       }
 
-      // Clear typing indicator when message received
       setTypingUsers((prev) => {
         const next = new Set(prev);
         next.delete(newMsg.sender_id);
@@ -106,25 +111,12 @@ export function useChatSocket({
     [conversationId, setMessages, onScrollToBottom, currentUserId],
   );
 
-  // Socket connection and subscriptions
   useEffect(() => {
     if (!conversationId || currentUserId === null) return;
 
-    const unsubscribeUpdate = onMessageUpdated((updatedMsg: SocketMessage) => {
-      if (updatedMsg.conversation_id !== conversationId) return;
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === updatedMsg.id.toString() ? { ...msg, content: updatedMsg.content ?? "", is_edited: true } : msg,
-        ),
-      );
-    });
-    const unsubscribeDelete = onMessageDeleted((data: { id: string | number }) => {
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === data.id.toString() ? { ...msg, content: "", is_deleted: true } : msg)),
-      );
-    });
-
-    // Connect to socket and join conversation room
+    // ---- ORDER MATTERS ----
+    // connectSocket() must run before any on*() subscription, otherwise
+    // those subscriptions attach to a null socket and silently no-op.
     try {
       connectSocket();
       joinConversation(conversationId);
@@ -134,20 +126,30 @@ export function useChatSocket({
       return;
     }
 
-    const socket = getSocket();
-    const handleReconnect = () => {
-      joinConversation(conversationId);
-      markConversationRead(conversationId);
-    };
-    
-    if (socket) {
-      socket.on("connect", handleReconnect);
-    }
+    // ---- Subscriptions (socket now exists) ----
+    const unsubscribeUpdate = onMessageUpdated((updatedMsg: SocketMessage) => {
+      if (updatedMsg.conversation_id !== conversationId) return;
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === updatedMsg.id.toString()
+            ? {
+                ...msg,
+                content: updatedMsg.content ?? "",
+                is_edited: true,
+              }
+            : msg,
+        ),
+      );
+    });
 
-    // Subscribe to new messages
+    const unsubscribeDelete = onMessageDeleted((data: { id: string | number }) => {
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === data.id.toString() ? { ...msg, content: "", is_deleted: true } : msg)),
+      );
+    });
+
     const unsubscribe = onNewMessage(processIncomingMessage);
 
-    // Subscribe to typing indicators
     const unsubscribeTypingStart = onTypingStart((event: TypingEvent) => {
       if (event.conversationId !== conversationId) return;
       if (event.userId === currentUserId) return;
@@ -163,17 +165,12 @@ export function useChatSocket({
       });
     });
 
-    // Subscribe to messages read events
     const unsubscribeMessagesRead = onMessagesRead((event: MessagesReadEvent) => {
       if (event.conversationId !== conversationId) return;
       setMessages((prev) => prev.map((msg) => (msg.sender_id === currentUserId ? { ...msg, is_read: true } : msg)));
     });
 
-    // Cleanup on unmount or conversation change
     return () => {
-      if (socket) {
-        socket.off("connect", handleReconnect); 
-      }
       unsubscribe();
       unsubscribeTypingStart();
       unsubscribeTypingStop();

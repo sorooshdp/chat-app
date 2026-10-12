@@ -7,6 +7,13 @@ import { getAuthToken } from "@/lib/utils/auth";
 import { deleteMessage, editMessage, fetchMessages, sendMessage } from "@/lib/utils/api";
 import { emitTypingStart, emitTypingStop } from "@/lib/socket";
 
+/** Messages with an id starting with this prefix are local-only (not yet confirmed). */
+const TEMP_ID_PREFIX = "temp-";
+
+function isTempId(id: string): boolean {
+  return id.startsWith(TEMP_ID_PREFIX);
+}
+
 function toLocalMessage(msg: MessageWithSender): LocalMessage {
   return {
     id: msg.id.toString(),
@@ -20,11 +27,12 @@ function toLocalMessage(msg: MessageWithSender): LocalMessage {
     is_edited: msg.is_edited ?? false,
     is_deleted: msg.is_deleted ?? false,
     reply_to: msg.reply_to ?? null,
+    reply_to_id: msg.reply_to_id != null ? msg.reply_to_id.toString() : null,
   };
 }
 
 interface UseChatMessagesOptions {
-  conversationId: number | null; // Changed from conversation object to ID
+  conversationId: number | null;
   currentUserId: number | null;
   onScrollToBottom: () => void;
 }
@@ -52,10 +60,6 @@ interface UseChatMessagesReturn {
   handleDeleteMessage: (id: string) => Promise<void>;
 }
 
-/**
- * Hook to manage chat messages state and operations
- * Handles fetching, sending, retrying, and deleting messages
- */
 export function useChatMessages({
   conversationId,
   currentUserId,
@@ -69,7 +73,11 @@ export function useChatMessages({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef<boolean>(false);
   const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null);
-  const [replyingTo, setReplyingTo] = useState<{ id: string; senderName: string | null; content: string } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    senderName: string | null;
+    content: string;
+  } | null>(null);
 
   const handleEditInit = useCallback((id: string, content: string) => {
     setEditingMessage({ id, content });
@@ -80,7 +88,6 @@ export function useChatMessages({
   const handleReplyInit = useCallback((id: string, senderName: string | null, content: string) => {
     setReplyingTo({ id, senderName, content });
     setEditingMessage(null);
-    setMessageInput("");
   }, []);
 
   const handleCancelAction = useCallback(() => {
@@ -89,7 +96,6 @@ export function useChatMessages({
     setMessageInput("");
   }, []);
 
-  // Load initial messages for a conversation
   const loadInitialMessages = useCallback(async (): Promise<void> => {
     if (conversationId === null) {
       setMessages([]);
@@ -102,7 +108,6 @@ export function useChatMessages({
 
     try {
       const token = getAuthToken();
-
       if (!token) {
         console.error("No auth token found");
         return;
@@ -111,15 +116,15 @@ export function useChatMessages({
       const { messages: fetchedMessages, hasMore } = await fetchMessages(conversationId, token, MESSAGE_LIMIT);
       setMessages(fetchedMessages.map(toLocalMessage));
       setHasMoreMessages(hasMore);
-      setTimeout(onScrollToBottom, 100);
+      // Scroll handled by ChatWindow's useEffect([messages]).
+      requestAnimationFrame(() => onScrollToBottom());
     } catch (error) {
       console.error("Error loading messages:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [conversationId, onScrollToBottom]);
+  }, [conversationId]);
 
-  // Handle typing indicator emission
   const handleInputChange = useCallback(
     (value: string): void => {
       setMessageInput(value);
@@ -131,9 +136,7 @@ export function useChatMessages({
         emitTypingStart(conversationId);
       }
 
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
       typingTimeoutRef.current = setTimeout(() => {
         if (conversationId !== null && isTypingRef.current) {
@@ -150,7 +153,6 @@ export function useChatMessages({
     [conversationId],
   );
 
-  // Load more (older) messages
   const handleLoadMore = useCallback(async (): Promise<void> => {
     if (conversationId === null || isLoadingMore || messages.length === 0) return;
 
@@ -177,7 +179,6 @@ export function useChatMessages({
     }
   }, [conversationId, isLoadingMore, messages]);
 
-  // Send a new message
   const handleSendMessage = useCallback(
     async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
       e.preventDefault();
@@ -185,13 +186,17 @@ export function useChatMessages({
       if (conversationId === null || !messageInput.trim() || currentUserId === null) return;
 
       const content = messageInput.trim();
-      const token = getAuthToken()!;
+      const token = getAuthToken();
+      if (!token) {
+        console.error("No auth token found");
+        return;
+      }
 
       if (editingMessage) {
         try {
           const updated = await editMessage(conversationId, editingMessage.id, content, token);
           setMessages((prev) =>
-            prev.map((msg) => (msg.id === editingMessage.id ? { ...toLocalMessage(updated), isLocal: true } : msg)),
+            prev.map((msg) => (msg.id === editingMessage.id ? { ...toLocalMessage(updated) } : msg)),
           );
           handleCancelAction();
         } catch (error) {
@@ -200,67 +205,58 @@ export function useChatMessages({
         return;
       }
 
-      // Stop typing indicator
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (isTypingRef.current) {
         isTypingRef.current = false;
         emitTypingStop(conversationId);
       }
 
-      const tempId = `temp-${Date.now()}`;
+      const tempId = `${TEMP_ID_PREFIX}${Date.now()}`;
 
-      // Optimistic update - create placeholder message
+      // Resolve parent id up-front and refuse temp ids.
+      const parentId = replyingTo && !isTempId(replyingTo.id) ? replyingTo.id : undefined;
+
       const localMessage: LocalMessage = {
         id: tempId,
         content,
         created_at: new Date().toISOString(),
         sender_id: currentUserId,
-        sender: {
-          id: currentUserId,
-          name: null, // Will be filled by socket event
-          avatar_url: null,
-        },
+        sender: { id: currentUserId, name: null, avatar_url: null },
         status: "sending",
         isLocal: true,
         is_read: false,
-        reply_to: replyingTo
-          ? {
-              content: replyingTo.content,
-              sender: { name: replyingTo.senderName },
-            }
-          : null,
+        reply_to: replyingTo ? { content: replyingTo.content, sender: { name: replyingTo.senderName } } : null,
+        reply_to_id: parentId ?? null,
       };
 
       setMessageInput("");
       setMessages((prev) => [...prev, localMessage]);
 
       try {
-        const token = getAuthToken();
+        const sentMessage = await sendMessage(conversationId, content, token, parentId);
 
-        if (!token) {
-          throw new Error("No auth token found");
-        }
-
-        const sentMessage = await sendMessage(conversationId, content, token, replyingTo?.id);
-
-        // Replace temp message with real one, checking both the tempId and the real ID
+        // Replace ONLY the temp message. If the socket already inserted the
+        // real one, we let the socket handler own it (see note in the review).
         setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempId || msg.id === sentMessage.id.toString()
-              ? { ...toLocalMessage(sentMessage), isLocal: true }
-              : msg,
-          ),
+          prev.map((msg) => {
+            if (msg.id !== tempId) return msg;
+            return {
+              ...toLocalMessage(sentMessage),
+              isLocal: true,
+              // Preserve reply metadata if the server response omitted it.
+              reply_to: sentMessage.reply_to ?? msg.reply_to ?? null,
+              reply_to_id:
+                sentMessage.reply_to_id != null ? sentMessage.reply_to_id.toString() : (msg.reply_to_id ?? null),
+            };
+          }),
         );
+
+        handleCancelAction();
       } catch (error) {
         console.error("Error sending message:", error);
-
-        // Mark as failed
         setMessages((prev) => prev.map((msg) => (msg.id === tempId ? { ...msg, status: "failed" as const } : msg)));
+        // Keep replyingTo so the retry path can still send the parent id.
       }
-
-      handleCancelAction();
     },
     [conversationId, messageInput, currentUserId, editingMessage, handleCancelAction, replyingTo],
   );
@@ -269,46 +265,57 @@ export function useChatMessages({
     async (id: string) => {
       if (!conversationId) return;
       try {
-        await deleteMessage(conversationId, id, getAuthToken()!);
-        // Optimistic delete
+        const token = getAuthToken();
+        if (!token) throw new Error("No auth token found");
+        await deleteMessage(conversationId, id, token);
         setMessages((prev) => prev.map((msg) => (msg.id === id ? { ...msg, is_deleted: true, content: "" } : msg)));
       } catch (error) {
-        console.error("Delete faild", error);
+        console.error("Delete failed", error);
       }
     },
     [conversationId],
   );
 
-  // Retry sending a failed message
   const handleRetry = useCallback(
     async (messageId: string): Promise<void> => {
       const failedMessage = messages.find((msg) => msg.id === messageId && msg.status === "failed");
       if (!failedMessage || conversationId === null) return;
 
+      const token = getAuthToken();
+      if (!token) {
+        console.error("No auth token found");
+        return;
+      }
+
       setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, status: "sending" as const } : msg)));
 
       try {
-        const token = getAuthToken();
-
-        if (!token) {
-          throw new Error("No auth token found");
-        }
-
-        const sentMessage = await sendMessage(conversationId, failedMessage.content, token);
-
+        const sentMessage = await sendMessage(
+          conversationId,
+          failedMessage.content,
+          token,
+          failedMessage.reply_to_id ?? undefined,
+        );
         setMessages((prev) =>
-          prev.map((msg) => (msg.id === messageId ? { ...toLocalMessage(sentMessage), isLocal: true } : msg)),
+          prev.map((msg) => {
+            if (msg.id !== messageId) return msg;
+            return {
+              ...toLocalMessage(sentMessage),
+              isLocal: true,
+              reply_to: sentMessage.reply_to ?? msg.reply_to ?? null,
+              reply_to_id:
+                sentMessage.reply_to_id != null ? sentMessage.reply_to_id.toString() : (msg.reply_to_id ?? null),
+            };
+          }),
         );
       } catch (error) {
         console.error("Error retrying message:", error);
-
         setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, status: "failed" as const } : msg)));
       }
     },
     [conversationId, messages],
   );
 
-  // Delete a failed message
   const handleDeleteFailed = useCallback((messageId: string): void => {
     setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
   }, []);
