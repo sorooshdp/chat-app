@@ -63,7 +63,7 @@ export function useChatMessages({
 }: UseChatMessagesOptions): UseChatMessagesReturn {
   const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [messageInput, setMessageInput] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(!!conversationId);
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
