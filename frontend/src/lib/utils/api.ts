@@ -20,6 +20,7 @@ export async function searchUsers(query: string, token: string): Promise<UserPro
 
   const response = await fetch(`${API_URL}/api/users/search?q=${encodeURIComponent(query)}`, {
     headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
   });
 
   if (!response.ok) throw new Error("User search failed");
@@ -31,10 +32,7 @@ export async function searchUsers(query: string, token: string): Promise<UserPro
 /**
  * Create a new conversation with participants
  */
-export async function createConversation(
-  participantId: number,
-  token: string
-): Promise<CreateConversationResponse> {
+export async function createConversation(participantId: number, token: string): Promise<CreateConversationResponse> {
   const response = await fetch(`${API_URL}/api/conversations`, {
     method: "POST",
     headers: {
@@ -58,7 +56,7 @@ export async function fetchMessages(
   conversationId: number,
   token: string,
   limit: number = 50,
-  beforeId?: string
+  beforeId?: string,
 ): Promise<FetchMessagesResult> {
   const params = new URLSearchParams();
   params.set("limit", limit.toString());
@@ -66,14 +64,12 @@ export async function fetchMessages(
     params.set("before", beforeId);
   }
 
-  const response = await fetch(
-    `${API_URL}/api/messages/${conversationId}?${params.toString()}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+  const response = await fetch(`${API_URL}/api/messages/${conversationId}?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch messages");
@@ -89,7 +85,12 @@ export async function fetchMessages(
 /**
  * Send a message to a conversation
  */
-export async function sendMessage(conversationId: number, content: string, token: string, replyToId?: string): Promise<MessageWithSender> {
+export async function sendMessage(
+  conversationId: number,
+  content: string,
+  token: string,
+  replyToId?: string,
+): Promise<MessageWithSender> {
   const response = await fetch(`${API_URL}/api/messages/${conversationId}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -99,7 +100,12 @@ export async function sendMessage(conversationId: number, content: string, token
   return (await response.json()).message;
 }
 
-export async function editMessage(conversationId: number, messageId: string, content: string, token: string): Promise<MessageWithSender> {
+export async function editMessage(
+  conversationId: number,
+  messageId: string,
+  content: string,
+  token: string,
+): Promise<MessageWithSender> {
   const response = await fetch(`${API_URL}/api/messages/${conversationId}/${messageId}`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -112,7 +118,7 @@ export async function editMessage(conversationId: number, messageId: string, con
 export async function deleteMessage(conversationId: number, messageId: string, token: string): Promise<void> {
   const response = await fetch(`${API_URL}/api/messages/${conversationId}/${messageId}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) throw new Error("Failed to delete message");
 }
@@ -122,12 +128,13 @@ export async function deleteMessage(conversationId: number, messageId: string, t
  */
 export async function fetchConversation(
   conversationId: number,
-  token: string
+  token: string,
 ): Promise<ConversationWithDetails | null> {
   const response = await fetch(`${API_URL}/api/conversations/${conversationId}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+    cache: "no-store",
   });
 
   if (!response.ok) {
