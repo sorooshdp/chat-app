@@ -85,7 +85,7 @@ export function useChatSocket({
 
         const withReply: LocalMessage = {
           ...processedMessage,
-          reply_to: replyTo,
+          reply_to: replyTo ?? null,
         };
 
         // Replace the optimistic message if one matches.
