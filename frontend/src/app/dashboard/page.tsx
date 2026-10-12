@@ -1,10 +1,13 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import Dashboard from "@/components/common/dashboard";
 
 export const metadata: Metadata = {
   title: "Dashboard - Nexus",
   description: "Access your Nexus dashboard to manage conversations and connect with friends.",
-  robots: "noindex, nofollow",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function DashboardPage() {
