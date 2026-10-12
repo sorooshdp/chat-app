@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { JSX } from "react";
 import { ConversationList } from "@/components/common/conversation-list";
 import { ChatWindow } from "@/components/common/chat-window";
@@ -11,7 +11,7 @@ import {
   onPresenceOnline,
   onPresenceOffline,
   onPresenceList,
-  ConversationUpdateEvent,
+  // ConversationUpdateEvent,
 } from "@/lib/socket";
 import { getAuthToken, getCurrentUserId } from "@/lib/utils/auth";
 import { fetchConversation } from "@/lib/utils/api";
@@ -25,17 +25,26 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
+  const activeConversationIdRef = useRef<number | null>(null);
+  const conversationsRef = useRef(conversations);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeConversationId) || null,
-    [conversations, activeConversationId]
+    [conversations, activeConversationId],
   );
+
   const isOtherUserOnline = useMemo(
-    () => activeConversation
-      ? onlineUsers.has(activeConversation.participants[0]?.user.id ?? -1)
-      : false,
-    [activeConversation, onlineUsers]
+    () => (activeConversation ? onlineUsers.has(activeConversation.participants[0]?.user.id ?? -1) : false),
+    [activeConversation, onlineUsers],
   );
+
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   // Get current user ID on mount
   useEffect(() => {
@@ -56,69 +65,45 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
   useEffect(() => {
     if (currentUserId === null) return;
 
-    try {
-      connectSocket();
-    } catch (error) {
-      console.error('Failed to connect socket:', error);
-      return;
-    }
+    connectSocket();
 
-    // Listen for conversation updates (new messages)
-    const unsubscribeUpdate = onConversationUpdate(async (event: ConversationUpdateEvent) => {
-      console.log('Conversation update received:', event);
-
+    const unsubscribeUpdate = onConversationUpdate(async (event) => {
       setConversations((prev) => {
-        const existingIndex = prev.findIndex((c) => c.id === event.conversationId);
+        const idx = prev.findIndex((c) => c.id === event.conversationId);
+        if (idx === -1) return prev;
 
-        if (existingIndex !== -1) {
-          // Update only the affected conversation, preserving others
-          const updated = [...prev];
-          const conversation = { ...updated[existingIndex]! };
-          
-          conversation.last_message = {
-            content: event.lastMessage.content,
-            created_at: event.lastMessage.created_at,
-            sender_id: event.lastMessage.sender_id,
-          };
-          
-          // Only increment unread count if:
-          // 1. Message is from someone else
-          // 2. User is NOT currently viewing this conversation
-          if (event.lastMessage.sender_id !== currentUserId && 
-              event.conversationId !== activeConversationId) {
-            conversation.unread_count = (conversation.unread_count || 0) + 1;
-          }
-          
-          // Remove from current position and add to top
-          updated.splice(existingIndex, 1);
-          return [conversation, ...updated];
+        const updated = [...prev];
+        const conversation = { ...updated[idx]! };
+        conversation.last_message = {
+          content: event.lastMessage.content,
+          created_at: event.lastMessage.created_at,
+          sender_id: event.lastMessage.sender_id,
+        };
+
+        const isSelf = event.lastMessage.sender_id === currentUserId;
+        const isViewing = event.conversationId === activeConversationIdRef.current;
+        if (!isSelf && !isViewing) {
+          conversation.unread_count = (conversation.unread_count ?? 0) + 1;
         }
-        
-        // If conversation doesn't exist, fetch it asynchronously
-        (async () => {
-          try {
-            const token = getAuthToken();
-            
-            if (!token) {
-              console.error("No auth token available to fetch new conversation");
-              return;
-            }
-            const newConversation = await fetchConversation(event.conversationId, token);
-            if (newConversation) {
-              setConversations((current) => {
-                if (current.some((c) => c.id === event.conversationId)) {
-                  return current;
-                }
-                return [newConversation, ...current];
-              });
-            }
-          } catch (error) {
-            console.error('Failed to fetch new conversation:', error);
-          }
-        })();
-        
-        return prev;
+
+        updated.splice(idx, 1);
+        return [conversation, ...updated];
       });
+
+      if (!conversationsRef.current.some((c) => c.id === event.conversationId)) {
+        // move async fetch OUT of the state updater
+        try {
+          const token = getAuthToken();
+          if (!token) return;
+          const newConversation = await fetchConversation(event.conversationId, token);
+          if (!newConversation) return;
+          setConversations((current) =>
+            current.some((c) => c.id === event.conversationId) ? current : [newConversation, ...current],
+          );
+        } catch (err) {
+          console.error("Failed to fetch new conversation:", err);
+        }
+      }
     });
 
     // Subscribe to presence events
@@ -144,14 +129,12 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
       unsubscribeOnline();
       unsubscribeOffline();
     };
-  }, [currentUserId, activeConversationId]); // Added activeConversationId to deps
+  }, [currentUserId]);
 
   const handleConversationSelect = useCallback((conversationId: number): void => {
     setActiveConversationId(conversationId);
     // Clear unread count when selecting conversation
-    setConversations((prev) =>
-      prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c))
-    );
+    setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)));
   }, []);
 
   const handleConversationCreated = useCallback((newConversation: ConversationWithDetails): void => {
