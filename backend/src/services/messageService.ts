@@ -11,7 +11,7 @@ export interface MessageWithSender {
   is_deleted: boolean;
   reply_to_id: number | null;
   sender: { id: number; name: string | null; avatar_url: string | null };
-  reply_to?: { content: string | null; sender: { name: string | null } } | null;
+  reply_to: { content: string | null; sender: { name: string | null } } | null;
 }
 
 const MESSAGE_SELECT = `
@@ -72,7 +72,7 @@ export class MessageService {
     content: string,
     replyToId?: number,
   ): Promise<MessageWithSender> {
-    // Verify user is participant
+    // Verify user is participant (unchanged)
     const { data: participant } = await supabase
       .from("conversation_participants")
       .select("id")
@@ -84,24 +84,48 @@ export class MessageService {
       throw new Error("Unauthorized: Not a participant of this conversation");
     }
 
-    // Insert message
-    const { data: message, error } = await supabase
+    // Validate replyToId belongs to the same conversation.
+    if (replyToId != null) {
+      const { data: parent, error: parentError } = await supabase
+        .from("messages")
+        .select("id")
+        .eq("id", replyToId)
+        .eq("conversation_id", conversationId)
+        .single();
+
+      if (parentError || !parent) {
+        throw new Error("Invalid replyToId: parent message not found in this conversation");
+      }
+    }
+
+    // Insert — only ask for the id.
+    const { data: inserted, error: insertError } = await supabase
       .from("messages")
       .insert({
         conversation_id: conversationId,
         sender_id: senderId,
         content,
-        reply_to_id: replyToId || null,
+        reply_to_id: replyToId ?? null,
       })
-      .select(MESSAGE_SELECT) 
+      .select("id")
       .single();
 
-    if (error) {
-      console.error("Supabase error sending message:", error);
+    if (insertError || !inserted) {
+      console.error("Supabase error sending message:", insertError);
       throw new Error("Failed to send message");
     }
 
-    console.log("reply_to_id:", message.reply_to_id, "reply_to raw:", JSON.stringify(message.reply_to));
+    // Re-fetch with the full join. This is the safe path for self-references.
+    const { data: message, error: fetchError } = await supabase
+      .from("messages")
+      .select(MESSAGE_SELECT)
+      .eq("id", inserted.id)
+      .single();
+
+    if (fetchError || !message) {
+      console.error("Supabase error fetching new message:", fetchError);
+      throw new Error("Failed to send message");
+    }
 
     return this.formatMessage(message);
   }
