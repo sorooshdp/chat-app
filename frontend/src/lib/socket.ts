@@ -75,6 +75,8 @@ export function connectSocket(): Socket {
     autoConnect: true,
   });
 
+  socket.onAny((event, ...args) => console.debug("[socket in]", event, args));
+
   socket.on('connect', () => {
     console.log('Socket connected:', socket?.id);
   });

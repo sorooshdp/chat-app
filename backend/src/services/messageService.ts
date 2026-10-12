@@ -101,6 +101,8 @@ export class MessageService {
       throw new Error("Failed to send message");
     }
 
+    console.log("reply_to_id:", message.reply_to_id, "reply_to raw:", JSON.stringify(message.reply_to));
+
     return this.formatMessage(message);
   }
 
