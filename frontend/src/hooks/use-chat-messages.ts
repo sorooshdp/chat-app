@@ -245,9 +245,13 @@ export function useChatMessages({
 
         const sentMessage = await sendMessage(conversationId, content, token, replyingTo?.id);
 
-        // Replace temp message with real one
+        // Replace temp message with real one, checking both the tempId and the real ID
         setMessages((prev) =>
-          prev.map((msg) => (msg.id === tempId ? { ...toLocalMessage(sentMessage), isLocal: true } : msg)),
+          prev.map((msg) =>
+            msg.id === tempId || msg.id === sentMessage.id.toString()
+              ? { ...toLocalMessage(sentMessage), isLocal: true }
+              : msg,
+          ),
         );
       } catch (error) {
         console.error("Error sending message:", error);
