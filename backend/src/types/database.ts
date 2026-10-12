@@ -33,6 +33,9 @@ export interface Message {
   content: string | null;
   conversation_id: number;
   is_read: boolean;
+  is_edited: boolean;
+  is_deleted: boolean;
+  reply_to_id: number | null;
 }
 
 export interface ConversationWithDetails {
