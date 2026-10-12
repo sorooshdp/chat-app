@@ -39,7 +39,7 @@ export function MessageBubble({
   onEdit,
   onReply,
 }: MessageBubbleProps): JSX.Element {
-const timestamp = formatTimestamp(createdAt);
+  const timestamp = formatTimestamp(createdAt);
   const isSending = status === "sending";
   const isSent = status === "sent";
   const isFailed = status === "failed";
@@ -78,14 +78,13 @@ const timestamp = formatTimestamp(createdAt);
 
   return (
     <div className={`flex group w-full mb-2 items-center ${isOwnMessage ? "justify-end" : "justify-start"}`}>
-      
       {/* Show actions on the LEFT for own messages */}
       {isOwnMessage && actionBar}
 
       <div className="flex flex-col max-w-[70%]">
         <div
           className={`rounded-2xl px-4 py-2 shadow-lg ${
-            isDeleted 
+            isDeleted
               ? "bg-slate-800/50 border border-slate-700/50"
               : isFailed
                 ? "bg-red-900/50 text-white border border-red-600"
@@ -100,7 +99,9 @@ const timestamp = formatTimestamp(createdAt);
 
           {/* Quoted Reply UI */}
           {replyTo && !isDeleted && (
-            <div className={`mb-2 pl-3 border-l-2 rounded-r-md py-1 text-sm ${isOwnMessage ? "border-blue-300 bg-blue-700/50" : "border-slate-500 bg-slate-700/50"}`}>
+            <div
+              className={`mb-2 pl-3 border-l-2 rounded-r-md py-1 text-sm ${isOwnMessage ? "border-blue-300 bg-blue-700/50" : "border-slate-500 bg-slate-700/50"}`}
+            >
               <span className={`text-xs font-semibold ${isOwnMessage ? "text-blue-200" : "text-slate-300"}`}>
                 {replyTo.senderName || "Unknown"}
               </span>
@@ -110,20 +111,19 @@ const timestamp = formatTimestamp(createdAt);
 
           {/* Main Content */}
           {isDeleted ? (
-            <p className="italic text-slate-400 text-sm flex items-center gap-2">
-              This message was deleted
-            </p>
+            <p className="italic text-slate-400 text-sm flex items-center gap-2">This message was deleted</p>
           ) : (
             <p className="wrap-break-word">{content}</p>
           )}
 
           <div className="flex items-center justify-end gap-1.5 mt-1">
             {isEdited && !isDeleted && (
-              <span className={`text-[10px] ${isOwnMessage ? "text-blue-200/70" : "text-slate-500"}`}>
-                (edited)
-              </span>
+              <span className={`text-[10px] ${isOwnMessage ? "text-blue-200/70" : "text-slate-500"}`}>(edited)</span>
             )}
-            <span className={`text-[10px] ${isOwnMessage && !isDeleted ? "text-blue-200" : "text-slate-500"}`}>
+            <span
+              suppressHydrationWarning
+              className={`text-[10px] ${isOwnMessage && !isDeleted ? "text-blue-200" : "text-slate-500"}`}
+            >
               {timestamp}
             </span>
             {isOwnMessage && isSending && <Loader2 className="w-3 h-3 text-blue-300 animate-spin" />}
@@ -152,7 +152,6 @@ const timestamp = formatTimestamp(createdAt);
 
       {/* Show actions on the RIGHT for other messages */}
       {!isOwnMessage && actionBar}
-
     </div>
   );
 }

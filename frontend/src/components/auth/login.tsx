@@ -230,7 +230,7 @@ function HexagonGrid() {
           key={index}
           className="aspect-square relative"
           style={{
-            animation: `pulse ${3 + Math.random() * 4}s infinite alternate ${Math.random() * 2}s`,
+            animation: `pulse ${3 + (index % 4)}s infinite alternate ${(index % 3) * 0.5}s`,
           }}
         >
           <div

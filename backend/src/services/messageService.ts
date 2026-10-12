@@ -16,10 +16,10 @@ export interface MessageWithSender {
 
 const MESSAGE_SELECT = `
   id, content, created_at, sender_id, conversation_id, is_read, is_edited, is_deleted, reply_to_id,
-  sender:users!messages_sender_id_fkey (id, name, avatar_url),
-  reply_to:messages!messages_reply_to_id_fkey (
+  sender:users!sender_id (id, name, avatar_url),
+  reply_to:messages!reply_to_id (
     content,
-    sender:users!messages_sender_id_fkey (name)
+    sender:users!sender_id (name)
   )
 `;
 
