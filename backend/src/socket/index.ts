@@ -3,10 +3,6 @@ import { Server as HTTPServer } from "http";
 import jwt from "jsonwebtoken";
 import supabase from "../supabaseClient";
 
-/* ------------------------------------------------------------------ */
-/* Types                                                              */
-/* ------------------------------------------------------------------ */
-
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -25,7 +21,6 @@ interface JoinConversationPayload {
   conversationId: number;
 }
 
-/** Reply preview attached to a message. */
 interface ReplyPreview {
   content: string | null;
   sender: { name: string | null };
@@ -62,10 +57,6 @@ export interface OutgoingConversationUpdate {
   };
 }
 
-/* ------------------------------------------------------------------ */
-/* State                                                              */
-/* ------------------------------------------------------------------ */
-
 let io: SocketIOServer | null = null;
 
 const onlineUsers = new Map<number, Set<string>>();
@@ -89,10 +80,6 @@ export function getOnlineUserIds(): number[] {
 const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:3000,http://localhost:3001")
   .split(",")
   .map((origin) => origin.trim());
-
-/* ------------------------------------------------------------------ */
-/* Init                                                               */
-/* ------------------------------------------------------------------ */
 
 export function initializeSocket(httpServer: HTTPServer): SocketIOServer {
   io = new SocketIOServer(httpServer, {
@@ -245,10 +232,6 @@ export function initializeSocket(httpServer: HTTPServer): SocketIOServer {
   console.log("Socket.IO initialized");
   return io;
 }
-
-/* ------------------------------------------------------------------ */
-/* Emitters                                                           */
-/* ------------------------------------------------------------------ */
 
 export function emitNewMessage(conversationId: number, message: OutgoingMessage): void {
   if (!io) {

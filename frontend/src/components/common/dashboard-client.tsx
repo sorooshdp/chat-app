@@ -11,7 +11,6 @@ import {
   onPresenceOnline,
   onPresenceOffline,
   onPresenceList,
-  // ConversationUpdateEvent,
 } from "@/lib/socket";
 import { getAuthToken, getCurrentUserId } from "@/lib/utils/auth";
 import { fetchConversation } from "@/lib/utils/api";
@@ -23,7 +22,13 @@ interface DashboardClientProps {
 export function DashboardClient({ initialConversations }: DashboardClientProps): JSX.Element {
   const [conversations, setConversations] = useState<ConversationWithDetails[]>(initialConversations);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(() => {
+    try {
+      return getCurrentUserId();
+    } catch {
+      return null;
+    }
+  });
   const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
   const activeConversationIdRef = useRef<number | null>(null);
   const conversationsRef = useRef(conversations);
@@ -33,10 +38,9 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
     [conversations, activeConversationId],
   );
 
-  const isOtherUserOnline = useMemo(
-    () => (activeConversation ? onlineUsers.has(activeConversation.participants[0]?.user.id ?? -1) : false),
-    [activeConversation, onlineUsers],
-  );
+  const isOtherUserOnline = activeConversation
+    ? activeConversation.participants.some((p) => p.user.id !== currentUserId && onlineUsers.has(p.user.id))
+    : false;
 
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
@@ -56,16 +60,16 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
     }
   }, []);
 
-  // Sync local state with incoming props
-  useEffect(() => {
-    setConversations(initialConversations);
-  }, [initialConversations]);
-
   // Socket connection and subscriptions
   useEffect(() => {
     if (currentUserId === null) return;
 
-    connectSocket();
+    try {
+      connectSocket();
+    } catch (error) {
+      console.error("Failed to connect socket:", error);
+      return;
+    }
 
     const unsubscribeUpdate = onConversationUpdate(async (event) => {
       setConversations((prev) => {

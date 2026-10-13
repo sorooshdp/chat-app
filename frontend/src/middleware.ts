@@ -2,32 +2,20 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const secret = new TextEncoder().encode(process.env['JWT_SECRET']);
+function getJwtSecret(): Uint8Array {
+  const secret = process.env["JWT_SECRET"];
+  if (!secret) {
+    throw new Error("JWT_SECRET is required for middleware");
+  }
+  return new TextEncoder().encode(secret);
+}
 
-/**
- * Verify token with backend
- */
-// async function verifyTokenWithBackend(token: string): Promise<boolean> {
-//   try {
-//     const response = await fetch(`${process.env["NEXT_PUBLIC_API_URL"]}/api/auth/verify`, {
-//       method: "POST",
-//       headers: {
-//         Authorization: `Bearer ${token}`,
-//         "Content-Type": "application/json",
-//       },
-//     });
-
-//     return response.ok;
-//   } catch (error) {
-//     console.error("Token verification error:", error);
-//     return false;
-//   }
-// }
+const secret = getJwtSecret();
 
 /**
  * Verify token locally
  */
-async function isTokenValid(token: string): Promise<boolean>  {
+async function isTokenValid(token: string): Promise<boolean> {
   try {
     await jwtVerify(token, secret);
     return true;
@@ -50,18 +38,14 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
   if (isProtectedRoute) {
-    if (!token) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+    const redirectToLogin = () => {
+      const url = new URL("/login", request.url);
+      url.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(url);
+    };
 
-    const isValid = await isTokenValid(token);
-    if (!isValid) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+    if (!token) return redirectToLogin();
+    if (!(await isTokenValid(token))) return redirectToLogin();
   }
 
   // If user is authenticated and trying to access auth pages, redirect to dashboard

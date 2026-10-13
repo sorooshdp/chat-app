@@ -2,10 +2,6 @@ import { io, Socket } from "socket.io-client";
 import { getAuthToken } from "./utils/auth";
 import type { ConversationWithDetails } from "./types/api";
 
-/* ------------------------------------------------------------------ */
-/* Types                                                              */
-/* ------------------------------------------------------------------ */
-
 export interface SocketMessage {
   id: number;
   content: string | null;
@@ -62,17 +58,12 @@ export interface MessagesReadEvent {
   readBy: number;
 }
 
-/* ------------------------------------------------------------------ */
-/* Module-level singleton                                             */
-/* ------------------------------------------------------------------ */
-
 let socket: Socket | null = null;
 
 /**
  * Rooms the client is logically subscribed to. Kept in a Set so that
  * after a reconnect (which drops all room memberships server-side),
- * we can re-join them automatically. This is the fix for
- * "real-time stops working after a reconnect".
+ * we can re-join them automatically.
  */
 const joinedRooms = new Set<number>();
 
@@ -91,10 +82,6 @@ function log(...args: unknown[]): void {
 function warn(...args: unknown[]): void {
   if (isDev) console.warn(...args);
 }
-
-/* ------------------------------------------------------------------ */
-/* Connection lifecycle                                               */
-/* ------------------------------------------------------------------ */
 
 export function getSocket(): Socket | null {
   return socket;
@@ -131,8 +118,6 @@ export function connectSocket(): Socket {
     auth: { token },
     transports: ["websocket", "polling"],
     reconnection: true,
-    // Bump attempts. The default give-up-after-5 behaviour is what
-    // silently kills real-time for long-lived tabs.
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
@@ -208,10 +193,6 @@ export function disconnectSocket(): void {
   joinedRooms.clear();
 }
 
-/* ------------------------------------------------------------------ */
-/* Rooms                                                              */
-/* ------------------------------------------------------------------ */
-
 /**
  * Join a conversation room. Safe to call before the socket is connected:
  * the id is recorded and the actual emit happens on `connect`.
@@ -241,14 +222,9 @@ export function leaveConversation(conversationId: number): void {
   socket.emit("leave:conversation", { conversationId });
 }
 
-/* ------------------------------------------------------------------ */
-/* Subscriptions                                                      */
-/* ------------------------------------------------------------------ */
 /*
  * Every `on*` function captures the current socket instance in a local
- * `s` and returns a cleanup that `off`s on that same instance. This
- * fixes the case where a new socket is created after subscribe and the
- * cleanup was previously calling `off` on the new one.
+ * `s` and returns a cleanup that `off`s on that same instance.
  */
 
 export function onNewMessage(
