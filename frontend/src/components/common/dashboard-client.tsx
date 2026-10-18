@@ -50,7 +50,6 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
     conversationsRef.current = conversations;
   }, [conversations]);
 
-  // Get current user ID on mount
   useEffect(() => {
     try {
       const userId = getCurrentUserId();
@@ -60,7 +59,6 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
     }
   }, []);
 
-  // Socket connection and subscriptions
   useEffect(() => {
     if (currentUserId === null) return;
 
@@ -95,7 +93,6 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
       });
 
       if (!conversationsRef.current.some((c) => c.id === event.conversationId)) {
-        // move async fetch OUT of the state updater
         try {
           const token = getAuthToken();
           if (!token) return;
@@ -110,7 +107,6 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
       }
     });
 
-    // Subscribe to presence events
     const unsubscribeList = onPresenceList((event) => {
       setOnlineUsers(new Set(event.onlineUserIds));
     });
@@ -137,7 +133,6 @@ export function DashboardClient({ initialConversations }: DashboardClientProps):
 
   const handleConversationSelect = useCallback((conversationId: number): void => {
     setActiveConversationId(conversationId);
-    // Clear unread count when selecting conversation
     setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)));
   }, []);
 

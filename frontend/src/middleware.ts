@@ -12,9 +12,6 @@ function getJwtSecret(): Uint8Array {
 
 const secret = getJwtSecret();
 
-/**
- * Verify token locally
- */
 async function isTokenValid(token: string): Promise<boolean> {
   try {
     await jwtVerify(token, secret);
@@ -24,9 +21,6 @@ async function isTokenValid(token: string): Promise<boolean> {
   }
 }
 
-/**
- * Middleware to protect routes that require authentication
- */
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
@@ -48,7 +42,6 @@ export async function middleware(request: NextRequest) {
     if (!(await isTokenValid(token))) return redirectToLogin();
   }
 
-  // If user is authenticated and trying to access auth pages, redirect to dashboard
   if (isAuthRoute && token) {
     const isValid = await isTokenValid(token);
     if (isValid) {

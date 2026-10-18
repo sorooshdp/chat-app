@@ -13,10 +13,8 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-// Initialize Socket.IO
 initializeSocket(httpServer);
 
-// CORS configuration - supports multiple origins via comma-separated FRONTEND_URL
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000,http://localhost:3001')
   .split(',')
   .map(origin => origin.trim());
@@ -25,7 +23,6 @@ app.set('trust proxy', 1);
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
@@ -35,7 +32,6 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
-// Health check — no auth.
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -45,12 +41,10 @@ app.use('/api/conversations', conversationRouter);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
 
-// 404
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-// Global error handler 
 app.use((
   err: any,
   _req: express.Request,

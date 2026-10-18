@@ -56,7 +56,6 @@ export const ConversationItem = memo(function ConversationItem({
               </span>
             </div>
           )}
-          {/* Online indicator */}
           <span
             className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 ${
               isOnline ? "bg-green-500" : "bg-slate-500"
@@ -85,12 +84,10 @@ export const ConversationItem = memo(function ConversationItem({
   );
 }, areConversationPropsEqual);
 
-// Custom comparison function for memo
 function areConversationPropsEqual(
   prev: ConversationItemProps,
   next: ConversationItemProps
 ): boolean {
-  // Only re-render if these specific fields change
   return (
     prev.conversation.id === next.conversation.id &&
     prev.conversation.unread_count === next.conversation.unread_count &&

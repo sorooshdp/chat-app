@@ -1,26 +1,12 @@
 import supabase from "../supabaseClient";
-
-
-export interface UserSearchResult {
-  id: number;
-  name: string | null;
-  email: string;
-  avatar_url: string | null;
-  status: string | null;
-}
+import type { User } from "../types/database";
 
 export class UserService {
-  /**
-   * Search users by name or email, excluding current user
-   * @param query - Search term
-   * @param currentUserId - ID of user performing search
-   * @param limit - Maximum results to return
-   */
   static async searchUsers(
     query: string,
     currentUserId: number,
     limit: number = 20
-  ): Promise<UserSearchResult[]> {
+  ): Promise<Array<Pick<User, "id" | "name" | "email" | "avatar_url" | "status">>> {
     if (!query || query.trim().length < 2) {
       return [];
     }
@@ -41,9 +27,6 @@ export class UserService {
     return users || [];
   }
 
-  /**
-   * Check if a conversation exists between two users
-   */
   static async findExistingConversation(
     userId1: number,
     userId2: number

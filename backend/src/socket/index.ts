@@ -2,6 +2,7 @@ import { Server as SocketIOServer, Socket } from "socket.io";
 import { Server as HTTPServer } from "http";
 import jwt from "jsonwebtoken";
 import supabase from "../supabaseClient";
+import { MessageWithSender } from "../types/database";
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -21,30 +22,6 @@ interface JoinConversationPayload {
   conversationId: number;
 }
 
-interface ReplyPreview {
-  content: string | null;
-  sender: { name: string | null };
-}
-
-/** Full payload the client expects on `message:new`. Mirrors MessageWithSender. */
-export interface OutgoingMessage {
-  id: number;
-  content: string | null;
-  created_at: string;
-  sender_id: number;
-  conversation_id: number;
-  sender: {
-    id: number;
-    name: string | null;
-    avatar_url: string | null;
-  };
-  is_read: boolean;
-  is_edited: boolean;
-  is_deleted: boolean;
-  reply_to_id: number | null;
-  reply_to: ReplyPreview | null;
-}
-
 /** Payload for `conversation:update`. */
 export interface OutgoingConversationUpdate {
   conversationId: number;
@@ -53,7 +30,7 @@ export interface OutgoingConversationUpdate {
     content: string | null;
     created_at: string;
     sender_id: number;
-    reply_to?: ReplyPreview | null;
+    reply_to?: NonNullable<MessageWithSender["reply_to"]> | null;
   };
 }
 
@@ -233,7 +210,7 @@ export function initializeSocket(httpServer: HTTPServer): SocketIOServer {
   return io;
 }
 
-export function emitNewMessage(conversationId: number, message: OutgoingMessage): void {
+export function emitNewMessage(conversationId: number, message: MessageWithSender): void {
   if (!io) {
     console.warn("Socket.IO not initialized, cannot emit message");
     return;
@@ -306,7 +283,7 @@ export function emitNewConversation(
   console.log(`Emitted conversation:new to user:${userId}`);
 }
 
-export function emitMessageUpdated(conversationId: number, message: OutgoingMessage): void {
+export function emitMessageUpdated(conversationId: number, message: MessageWithSender): void {
   if (!io) {
     console.warn("Socket.IO not initialized, cannot emit message update");
     return;

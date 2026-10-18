@@ -1,21 +1,6 @@
 import { io, Socket } from "socket.io-client";
 import { getAuthToken } from "./utils/auth";
-import type { ConversationWithDetails } from "./types/api";
-
-export interface SocketMessage {
-  id: number;
-  content: string | null;
-  created_at: string;
-  sender_id: number;
-  conversation_id: number;
-  sender: {
-    id: number;
-    name: string | null;
-    avatar_url: string | null;
-  };
-  reply_to?: { content: string | null; sender: { name: string | null } } | null;
-  reply_to_id?: number | null;
-}
+import type { ConversationWithDetails, MessageWithSender } from "./types/api";
 
 export interface TypingEvent {
   conversationId: number;
@@ -113,7 +98,6 @@ export function connectSocket(): Socket {
     return socket;
   }
 
-  // First-time creation.
   socket = io(SOCKET_URL, {
     auth: { token },
     transports: ["websocket", "polling"],
@@ -132,9 +116,6 @@ export function connectSocket(): Socket {
   socket.on("connect", () => {
     log("Socket connected:", socket?.id);
 
-    // Re-join every room we think we're in. First connect is a no-op
-    // for this loop because joinedRooms is only populated by
-    // joinConversation(), which is called after mount.
     for (const conversationId of joinedRooms) {
       socket?.emit("join:conversation", { conversationId });
       log(`Re-joining conversation room: ${conversationId}`);
@@ -213,7 +194,6 @@ export function joinConversation(conversationId: number): void {
     socket.emit("join:conversation", { conversationId });
     log(`Joining conversation room: ${conversationId}`);
   }
-  // If not connected, the 'connect' handler will flush joinedRooms.
 }
 
 export function leaveConversation(conversationId: number): void {
@@ -228,7 +208,7 @@ export function leaveConversation(conversationId: number): void {
  */
 
 export function onNewMessage(
-  callback: (message: SocketMessage) => void,
+  callback: (message: MessageWithSender) => void,
 ): () => void {
   const s = socket;
   if (!s) {
@@ -351,7 +331,7 @@ export function onMessagesRead(
 }
 
 export function onMessageUpdated(
-  callback: (message: SocketMessage) => void,
+  callback: (message: MessageWithSender) => void,
 ): () => void {
   const s = socket;
   if (!s) return () => {};

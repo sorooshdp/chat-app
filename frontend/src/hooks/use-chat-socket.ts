@@ -11,12 +11,12 @@ import {
   onTypingStop,
   onMessagesRead,
   markConversationRead,
-  SocketMessage,
   TypingEvent,
   MessagesReadEvent,
   onMessageUpdated,
   onMessageDeleted,
 } from "@/lib/socket";
+import type { MessageWithSender } from "@/lib/types/api";
 
 interface UseChatSocketOptions {
   conversationId: number | null;
@@ -41,7 +41,7 @@ export function useChatSocket({
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
 
   const processIncomingMessage = useCallback(
-    (newMsg: SocketMessage): void => {
+    (newMsg: MessageWithSender): void => {
       if (newMsg.conversation_id !== conversationId) return;
 
       const processedMessage: LocalMessage = {
@@ -141,8 +141,7 @@ export function useChatSocket({
       return;
     }
 
-    // ---- Subscriptions (socket now exists) ----
-    const unsubscribeUpdate = onMessageUpdated((updatedMsg: SocketMessage) => {
+    const unsubscribeUpdate = onMessageUpdated((updatedMsg: MessageWithSender) => {
       if (updatedMsg.conversation_id !== conversationId) return;
       setMessages((prev) =>
         prev.map((msg) =>

@@ -1,8 +1,3 @@
-/**
- * Core database entities
- * These mirror the exact Supabase schema
- */
-
 export interface User {
   id: number;
   created_at: string;
@@ -19,14 +14,6 @@ export interface Conversation {
   created_at: string;
   type: "dm" | "group" | null;
   name: string | null;
-}
-
-export interface ConversationParticipant {
-  id: number;
-  created_at: string;
-  conversation_id: number;
-  user_id: number;
-  joined_at: string | null;
 }
 
 export interface Message {

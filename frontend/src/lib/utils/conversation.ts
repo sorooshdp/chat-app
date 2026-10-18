@@ -1,10 +1,5 @@
 import type { ConversationWithDetails } from "@/lib/types/api";
 
-/**
- * Get display name for a conversation
- * - For group chats: returns the group name
- * - For DMs: returns the other participant's name(s)
- */
 export function getDisplayName(conversation: ConversationWithDetails): string {
   if (conversation.type === "group" && conversation.name) {
     return conversation.name;

@@ -29,7 +29,6 @@ const AnimatedCanvas = () => {
     let animationFrameId: number;
     const baseParticleCount = Math.floor(window.innerWidth / 13);
 
-    // Set canvas size to match window size
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -62,7 +61,6 @@ const AnimatedCanvas = () => {
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Background gradient
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
       gradient.addColorStop(0, "#000000");
       gradient.addColorStop(0.5, "#0a1025");
@@ -70,7 +68,6 @@ const AnimatedCanvas = () => {
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Update and draw particles
       drawParticlesConnctions(ctx);
       updateAndDrawParticles(ctx);
 

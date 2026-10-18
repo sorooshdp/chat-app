@@ -12,9 +12,6 @@ interface FetchMessagesResult {
 
 const API_URL = process.env["NEXT_PUBLIC_API_URL"] || "http://localhost:3000";
 
-/**
- * Search users by query string
- */
 export async function searchUsers(query: string, token: string): Promise<UserProfile[]> {
   if (query.trim().length < 2) return [];
 
@@ -29,9 +26,6 @@ export async function searchUsers(query: string, token: string): Promise<UserPro
   return data.users;
 }
 
-/**
- * Create a new conversation with participants
- */
 export async function createConversation(participantId: number, token: string): Promise<CreateConversationResponse> {
   const response = await fetch(`${API_URL}/api/conversations`, {
     method: "POST",
@@ -49,9 +43,6 @@ export async function createConversation(participantId: number, token: string): 
   return response.json();
 }
 
-/**
- * Fetch messages for a conversation with pagination support
- */
 export async function fetchMessages(
   conversationId: number,
   token: string,
@@ -82,9 +73,6 @@ export async function fetchMessages(
   };
 }
 
-/**
- * Send a message to a conversation
- */
 export async function sendMessage(
   conversationId: number,
   content: string,
@@ -94,7 +82,7 @@ export async function sendMessage(
   const response = await fetch(`${API_URL}/api/messages/${conversationId}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ content, replyToId }), // Pass replyToId
+    body: JSON.stringify({ content, replyToId }),
   });
   if (!response.ok) throw new Error("Failed to send message");
   return (await response.json()).message;
@@ -123,9 +111,6 @@ export async function deleteMessage(conversationId: number, messageId: string, t
   if (!response.ok) throw new Error("Failed to delete message");
 }
 
-/**
- * Fetch a single conversation by ID
- */
 export async function fetchConversation(
   conversationId: number,
   token: string,

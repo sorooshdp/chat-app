@@ -19,7 +19,6 @@ export function ChatHeader({
 }: ChatHeaderProps): JSX.Element {
   return (
     <>
-      {/* Mobile back button */}
       <div className="md:hidden flex items-center p-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md shrink-0">
         <button
           onClick={onBack}
@@ -31,7 +30,6 @@ export function ChatHeader({
         <span className="font-semibold text-white text-lg">{displayName}</span>
       </div>
 
-      {/* Desktop header */}
       <header className="hidden md:flex items-center p-4 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md shrink-0">
         {avatarUrl ? (
           <Image

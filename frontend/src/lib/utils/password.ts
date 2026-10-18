@@ -1,6 +1,3 @@
-/**
- * Password strength utilities
- */
 export function getPasswordStrength(pass: string): number {
   if (!pass) return 0;
   let strength = 0;

@@ -59,7 +59,6 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(function
     return (
       <section className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
         <div className="flex flex-col gap-4">
-          {/* Skeleton loading */}
           {[...Array(5)].map((_, i) => (
             <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
               <div className={`rounded-2xl px-4 py-3 ${i % 2 === 0 ? "bg-slate-800" : "bg-blue-600/50"} animate-pulse`}>
@@ -86,7 +85,6 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(function
   return (
     <section className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
       <div className="space-y-4">
-        {/* Load More Button */}
         {hasMoreMessages && (
           <div className="flex justify-center mb-4">
             <button
@@ -133,7 +131,6 @@ export const MessageList = forwardRef<HTMLDivElement, MessageListProps>(function
             />
           );
         })}
-        {/* Typing indicator */}
         {isTyping && <TypingIndicator />}
 
         <div ref={ref} />

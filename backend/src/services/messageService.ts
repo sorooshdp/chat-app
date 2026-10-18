@@ -1,18 +1,6 @@
 import supabase from "../supabaseClient";
+import { MessageWithSender } from "../types/database";
 
-export interface MessageWithSender {
-  id: number;
-  content: string | null;
-  created_at: string;
-  sender_id: number;
-  conversation_id: number;
-  is_read: boolean;
-  is_edited: boolean;
-  is_deleted: boolean;
-  reply_to_id: number | null;
-  sender: { id: number; name: string | null; avatar_url: string | null };
-  reply_to: { content: string | null; sender: { name: string | null } } | null;
-}
 
 const MESSAGE_SELECT = `
   id, content, created_at, sender_id, conversation_id, is_read, is_edited, is_deleted, reply_to_id,
@@ -52,7 +40,6 @@ export class MessageService {
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    // Apply cursor if provided (get messages before this id)
     if (before) {
       query = query.lt("id", before);
     }
@@ -98,7 +85,6 @@ export class MessageService {
       }
     }
 
-    // Insert — only ask for the id.
     const { data: inserted, error: insertError } = await supabase
       .from("messages")
       .insert({
@@ -115,7 +101,6 @@ export class MessageService {
       throw new Error("Failed to send message");
     }
 
-    // Re-fetch with the full join. This is the safe path for self-references.
     const { data: message, error: fetchError } = await supabase
       .from("messages")
       .select(MESSAGE_SELECT)

@@ -9,10 +9,7 @@ export default function LandingLayout({
 }) {
   return (
     <div className="relative min-h-screen">
-      {/* Persistent Animated Background */}
       <AnimatedBackground />
-      
-      {/* Page Content */}
       <div className="relative z-10">
         {children}
       </div>

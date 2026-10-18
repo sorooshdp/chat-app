@@ -76,7 +76,6 @@ export class MessageController {
 
       const parsedReplyToId = replyToId ? parseInt(replyToId) : undefined;
 
-      // Pass the parsed replyToId to the service
       const message = await MessageService.sendMessage(conversationId, req.user.id, content.trim(), parsedReplyToId);
 
       console.log(
@@ -88,10 +87,8 @@ export class MessageController {
         }),
       );
 
-      // Emit the message to all connected clients in the conversation room
       emitNewMessage(conversationId, message);
 
-      // Emit conversation list update to all participants (for sidebar updates)
       const participantIds = await MessageService.getConversationParticipantIds(conversationId);
       emitConversationListUpdate(participantIds, conversationId, {
         id: message.id,

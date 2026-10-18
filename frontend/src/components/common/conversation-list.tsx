@@ -41,12 +41,10 @@ export function ConversationList({
   const [localConversations, setLocalConversations] = useState<ConversationWithDetails[]>(conversations);
   const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
 
-  // Sync local state with incoming props (important for router.refresh())
   useEffect(() => {
     setLocalConversations(conversations);
   }, [conversations]);
 
-  // Subscribe to presence events
   useEffect(() => {
     try {
       connectSocket();
@@ -137,7 +135,7 @@ export function ConversationList({
         const response = await createConversation(user.id, token);
 
         if (response.conversation) {
-          onConversationCreated(response.conversation); // Use callback instead of local state
+          onConversationCreated(response.conversation);
         }
 
         setSearchMode("conversations");
@@ -246,7 +244,6 @@ export function ConversationList({
             ) : (
               <ul className="px-2">
                 {filteredConversations.map((conversation) => {
-                  // Check if the other participant is online
                   const otherUserId = conversation.participants[0]?.user.id;
                   const isOnline = otherUserId ? onlineUsers.has(otherUserId) : false;
 
@@ -268,7 +265,6 @@ export function ConversationList({
           <>
             {isSearching ? (
               <div className="px-2 space-y-2">
-                {/* Skeleton loading for user search */}
                 {[...Array(4)].map((_, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 animate-pulse">
                     <div className="w-10 h-10 rounded-full bg-slate-700"></div>

@@ -20,13 +20,11 @@ export default function Header() {
   return (
     <>
       <header className="container mx-auto py-6 px-4 md:px-14 flex justify-between items-center">
-        {/* Logo */}
         <div className="flex items-center gap-2">
           <Image src="/nexus.png" alt="Logo" width={40} height={40} />
           <span className="font-bold text-xl text-amber-50">Nexus</span>
         </div>
 
-        {/* Desktop Navigation - Hidden on small screens */}
         <nav className="hidden md:flex gap-8 justify-center items-center">
           {NAV_LINKS.filter((link) => !["/login", "/signup"].includes(link.href)).map((link) => (
             <Link key={link.href} href={link.href} className="text-amber-50 hover:text-blue-500 transition-colors">
@@ -35,7 +33,6 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* Action buttons - Hidden on small screens */}
         <div className="hidden md:flex gap-4">
           <Button variant="ghost" className="text-amber-50 hover:bg-amber-50 hover:text-blue-400">
             <Link href="/login">Log in</Link>
@@ -45,7 +42,6 @@ export default function Header() {
           </Button>
         </div>
 
-        {/* Mobile menu button - Visible only on small screens */}
         <button
           onClick={() => setIsSidebarOpen(true)}
           className="md:hidden p-2 rounded-md hover:bg-slate-800 text-amber-50 transition-colors"

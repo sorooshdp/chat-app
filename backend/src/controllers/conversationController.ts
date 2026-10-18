@@ -41,13 +41,12 @@ export class ConversationController {
 
       const conversationId = await ConversationService.createConversation(req.user.id, participantIds, type, name);
 
-      // Fetch the full conversation details
       const conversations = await ConversationService.getUserConversations(req.user.id);
       const newConversation = conversations.find((c) => c.id === conversationId);
 
       res.status(201).json({
         conversationId,
-        conversation: newConversation, // Return full conversation object
+        conversation: newConversation,
       });
     } catch (error: any) {
       console.error("Error creating conversation:", error);

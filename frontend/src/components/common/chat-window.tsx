@@ -13,16 +13,6 @@ interface ChatWindowProps {
   isOtherUserOnline?: boolean;
 }
 
-/** Distance from bottom (px) within which we consider the user "at bottom". */
-// const NEAR_BOTTOM_THRESHOLD = 120;
-
-/**
- * ChatWindow component - Main chat interface
- * Uses custom hooks for logic organization:
- * - useCurrentUser: Gets authenticated user ID
- * - useChatMessages: Manages message state and operations
- * - useChatSocket: Handles real-time socket subscriptions
- */
 export function ChatWindow({
   conversation,
   onClose,
@@ -39,7 +29,6 @@ export function ChatWindow({
 
   const currentUserId = useCurrentUser();
 
-  // Extract conversation ID to use as stable dependency.
   const conversationId = conversation?.id ?? null;
 
   const scrollToBottom = useCallback((force = false): void => {
@@ -47,7 +36,6 @@ export function ChatWindow({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // Message state and operations.
   const {
     messages,
     setMessages,
@@ -73,7 +61,6 @@ export function ChatWindow({
     onScrollToBottom: scrollToBottom,
   });
 
-  // Socket subscriptions (typing, new messages, read receipts).
   const { isTyping } = useChatSocket({
     conversationId,
     currentUserId,
@@ -82,10 +69,8 @@ export function ChatWindow({
     typingTimeoutRef,
   });
 
-  // Load messages only when conversation ID changes.
   useEffect(() => {
     if (conversationId === null) return;
-    // New conversation: allow the first auto-scroll.
     isNearBottomRef.current = true;
     loadInitialMessages();
   }, [conversationId, loadInitialMessages]);
@@ -98,9 +83,6 @@ export function ChatWindow({
     scrollToBottom(false);
   }, [messages, scrollToBottom]);
 
-  // Force scroll when the user switches conversations.
-  // Restructured so every code path returns a value (tsconfig has
-  // `noImplicitReturns: true`).
   useEffect(() => {
     if (conversationId === null) {
       return undefined;
@@ -125,7 +107,6 @@ export function ChatWindow({
     );
   }, [conversation, currentUserId]);
 
-  // Empty state when no conversation selected.
   if (!conversation) {
     return (
       <main className="flex-1 hidden md:flex items-center justify-center bg-linear-to-br from-black via-slate-900 to-blue-950">

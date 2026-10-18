@@ -18,7 +18,6 @@ export class ConversationService {
 
     const conversationIds = participantConvs.map(p => p.conversation_id);
 
-    // Fetch full conversation details with participants and last message
     const { data: conversations, error: convError } = await supabase
       .from('conversation')
       .select(`
@@ -34,10 +33,8 @@ export class ConversationService {
 
     if (convError) throw new Error(`Database error: ${convError.message}`);
 
-    // Calculate unread counts for each conversation using is_read
     const unreadCounts = await this.getUnreadCounts(conversationIds, userId);
 
-    // Transform and enrich data
     return conversations.map(conv => ({
       id: conv.id,
       created_at: conv.created_at,
@@ -167,7 +164,6 @@ export class ConversationService {
       return null; // Not authorized or doesn't exist
     }
 
-    // Fetch conversation details
     const { data: conversation, error } = await supabase
       .from('conversation')
       .select(`
@@ -186,7 +182,6 @@ export class ConversationService {
       return null;
     }
 
-    // Calculate unread count for this conversation using is_read
     const unreadCounts = await this.getUnreadCounts([conversationId], userId);
 
     return {

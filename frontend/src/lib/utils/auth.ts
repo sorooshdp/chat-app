@@ -44,11 +44,6 @@ export function getAuthToken(): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
-/**
- * Set the auth token cookie with sane defaults
- * @param token JWT token string
- * @param maxAgeSeconds Optional max-age in seconds (default 604800 = 7d)
- */
 export function setAuthToken(token: string, maxAgeSeconds: number = 604800): void {
   const expires = new Date(Date.now() + maxAgeSeconds * 1000).toUTCString();
   // Add Secure flag when running over HTTPS (production)
@@ -56,9 +51,6 @@ export function setAuthToken(token: string, maxAgeSeconds: number = 604800): voi
   document.cookie = `token=${token}; Path=/; SameSite=Lax; Expires=${expires}${secureFlag}`;
 }
 
-/**
- * Clear the auth token cookie (logout)
- */
 export function clearAuthToken(): void {
   const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
   document.cookie = `token=; Path=/; SameSite=Lax; Max-Age=0${secureFlag}`;

@@ -9,23 +9,6 @@ export interface User {
   status: string | null;
 }
 
-export type Users = ReadonlyArray<User>;
-
-export interface Conversation {
-  id: number;
-  created_at: string;
-  type: string | null;
-  name: string | null;
-}
-
-export interface ConversationParticipant {
-  id: number;
-  created_at: string;
-  conversation_id: number;
-  user_id: number;
-  joined_at: string | null;
-}
-
 export interface Message {
   id: number;
   created_at: string;
@@ -37,6 +20,11 @@ export interface Message {
   is_deleted: boolean;
   reply_to_id: number | null;
 }
+
+export type MessageWithSender = Message & {
+  sender: { id: number; name: string | null; avatar_url: string | null };
+  reply_to: { content: string | null; sender: { name: string | null } } | null;
+};
 
 export interface ConversationWithDetails {
   id: number;
