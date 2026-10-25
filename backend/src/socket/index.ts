@@ -12,6 +12,12 @@ function getJwtSecret(): string {
   return secret;
 }
 
+function parseConversationId(payload: unknown): number | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const id = (payload as Record<string, unknown>).conversationId;
+  return typeof id === "number" && Number.isInteger(id) && id > 0 ? id : null;
+}
+
 const JWT_SECRET = getJwtSecret();
 
 interface AuthenticatedSocket extends Socket {
@@ -136,42 +142,58 @@ export function initializeSocket(httpServer: HTTPServer): SocketIOServer {
       console.log(`User ${socket.user?.id} left ${roomName}`);
     });
 
-    socket.on("conversation:markRead", async (payload: JoinConversationPayload) => {
-      if (!socket.user) return;
+    socket.on("conversation:markRead", async (payload: unknown) => {
+      const conversationId = parseConversationId(payload);
+      if (!socket.user || !conversationId) return;
 
-      try {
-        const { error } = await supabase
-          .from("messages")
-          .update({ is_read: true })
-          .eq("conversation_id", payload.conversationId)
-          .neq("sender_id", socket.user.id)
-          .eq("is_read", false);
+      const roomName = `conversation:${conversationId}`;
+      // Fast check: if not already joined to the verified room, verify in DB
+      if (!socket.rooms.has(roomName)) {
+        const { data: participant } = await supabase
+          .from("conversation_participants")
+          .select("id")
+          .eq("conversation_id", conversationId)
+          .eq("user_id", socket.user.id)
+          .single();
+        if (!participant) return;
+      }
 
-        if (error) {
-          console.error("Error marking messages as read:", error);
-          return;
-        }
+      const { error } = await supabase
+        .from("messages")
+        .update({ is_read: true })
+        .eq("conversation_id", conversationId)
+        .neq("sender_id", socket.user.id)
+        .eq("is_read", false);
 
-        socket.to(`conversation:${payload.conversationId}`).emit("messages:read", {
-          conversationId: payload.conversationId,
+      if (!error) {
+        socket.to(roomName).emit("messages:read", {
+          conversationId,
           readBy: socket.user.id,
         });
-      } catch (error) {
-        console.error("Error marking conversation as read:", error);
       }
     });
 
-    socket.on("typing:start", (payload: JoinConversationPayload) => {
-      socket.to(`conversation:${payload.conversationId}`).emit("typing:start", {
-        conversationId: payload.conversationId,
-        userId: socket.user?.id,
+    socket.on("typing:start", (payload: unknown) => {
+      const conversationId = parseConversationId(payload);
+      if (!socket.user || !conversationId) return;
+      const roomName = `conversation:${conversationId}`;
+      if (!socket.rooms.has(roomName)) return;
+
+      socket.to(roomName).emit("typing:start", {
+        conversationId,
+        userId: socket.user.id,
       });
     });
 
-    socket.on("typing:stop", (payload: JoinConversationPayload) => {
-      socket.to(`conversation:${payload.conversationId}`).emit("typing:stop", {
-        conversationId: payload.conversationId,
-        userId: socket.user?.id,
+    socket.on("typing:stop", (payload: unknown) => {
+      const conversationId = parseConversationId(payload);
+      if (!socket.user || !conversationId) return;
+      const roomName = `conversation:${conversationId}`;
+      if (!socket.rooms.has(roomName)) return;
+
+      socket.to(roomName).emit("typing:stop", {
+        conversationId,
+        userId: socket.user.id,
       });
     });
 
