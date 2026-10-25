@@ -52,4 +52,24 @@ describe("MessageBubble", () => {
     fireEvent.click(deleteBtn);
     expect(onDelete).toHaveBeenCalledWith("msg-1");
   });
+
+  it("toggles action buttons when tapping the message bubble and closes after clicking an action", () => {
+    const onEdit = vi.fn();
+    render(<MessageBubble {...defaultProps} isOwnMessage={true} onEdit={onEdit} />);
+
+    const editBtn = screen.getByRole("button", { name: "Edit message" });
+    const actionContainer = editBtn.parentElement!;
+
+    // Hidden and unclickable by default
+    expect(actionContainer.className).toContain("pointer-events-none");
+
+    // Tap the message content to reveal actions on mobile
+    fireEvent.click(screen.getByText("Hello world"));
+    expect(actionContainer.className).toContain("pointer-events-auto");
+
+    // Clicking Edit fires callback and hides the menu again
+    fireEvent.click(editBtn);
+    expect(onEdit).toHaveBeenCalledWith("msg-1", "Hello world");
+    expect(actionContainer.className).toContain("pointer-events-none");
+  });
 });

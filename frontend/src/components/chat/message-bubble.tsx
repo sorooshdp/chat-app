@@ -1,6 +1,6 @@
 "use client";
 
-import type { JSX } from "react";
+import { useState, type JSX } from "react";
 import { Check, CheckCheck, Loader2, AlertCircle, Pencil, Trash2, Reply } from "lucide-react";
 import { formatTimestamp } from "@/lib/utils/date";
 
@@ -39,18 +39,32 @@ export function MessageBubble({
   onEdit,
   onReply,
 }: MessageBubbleProps): JSX.Element {
+  const [showActions, setShowActions] = useState(false);
+
   const timestamp = formatTimestamp(createdAt);
   const isSending = status === "sending";
   const isSent = status === "sent";
   const isFailed = status === "failed";
+  const canShowActions = !isDeleted && isSent;
 
-  // Extracted Action Bar using safe flexbox rendering instead of absolute positioning
-  const actionBar = !isDeleted && isSent && (
-    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 px-2 shrink-0">
+  const actionBar = canShowActions && (
+    <div
+      className={`flex items-center gap-1 px-2 shrink-0 transition-opacity ${
+        showActions
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto"
+      }`}
+    >
       <button
-        onClick={() => onReply?.(id, senderName, content)}
-        className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition"
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowActions(false);
+          onReply?.(id, senderName, content);
+        }}
+        className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-white active:bg-slate-700 hover:bg-slate-700 transition"
         title="Reply"
+        aria-label="Reply to message"
       >
         <Reply className="w-4 h-4" />
       </button>
@@ -58,16 +72,28 @@ export function MessageBubble({
       {isOwnMessage && (
         <>
           <button
-            onClick={() => onEdit?.(id, content)}
-            className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowActions(false);
+              onEdit?.(id, content);
+            }}
+            className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-white active:bg-slate-700 hover:bg-slate-700 transition"
             title="Edit"
+            aria-label="Edit message"
           >
             <Pencil className="w-4 h-4" />
           </button>
           <button
-            onClick={() => onDelete?.(id)}
-            className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-red-400 hover:bg-slate-700 transition"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowActions(false);
+              onDelete?.(id);
+            }}
+            className="p-1.5 bg-slate-800 rounded-full text-slate-400 hover:text-red-400 active:bg-slate-700 hover:bg-slate-700 transition"
             title="Delete"
+            aria-label="Delete message"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -77,13 +103,28 @@ export function MessageBubble({
   );
 
   return (
-    <div className={`flex group w-full mb-2 items-center ${isOwnMessage ? "justify-end" : "justify-start"}`}>
+    <div
+      tabIndex={-1}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+          setShowActions(false);
+        }
+      }}
+      className={`flex group w-full mb-2 items-center outline-none ${
+        isOwnMessage ? "justify-end" : "justify-start"
+      }`}
+    >
       {/* Show actions on the LEFT for own messages */}
       {isOwnMessage && actionBar}
 
       <div className="flex flex-col max-w-[70%]">
         <div
+          onClick={() => {
+            if (canShowActions) setShowActions((prev) => !prev);
+          }}
           className={`rounded-2xl px-4 py-2 shadow-lg ${
+            canShowActions ? "cursor-pointer md:cursor-default select-text" : ""
+          } ${
             isDeleted
               ? "bg-slate-800/50 border border-slate-700/50"
               : isFailed
@@ -100,7 +141,9 @@ export function MessageBubble({
           {/* Quoted Reply UI */}
           {replyTo && !isDeleted && (
             <div
-              className={`mb-2 pl-3 border-l-2 rounded-r-md py-1 text-sm ${isOwnMessage ? "border-blue-300 bg-blue-700/50" : "border-slate-500 bg-slate-700/50"}`}
+              className={`mb-2 pl-3 border-l-2 rounded-r-md py-1 text-sm ${
+                isOwnMessage ? "border-blue-300 bg-blue-700/50" : "border-slate-500 bg-slate-700/50"
+              }`}
             >
               <span className={`text-xs font-semibold ${isOwnMessage ? "text-blue-200" : "text-slate-300"}`}>
                 {replyTo.senderName || "Unknown"}
