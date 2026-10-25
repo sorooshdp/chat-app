@@ -114,16 +114,21 @@ export function useChatMessages({
       }
 
       const { messages: fetchedMessages, hasMore } = await fetchMessages(conversationId, token, MESSAGE_LIMIT);
-      setMessages(fetchedMessages.map(toLocalMessage));
+      const mapped = fetchedMessages.map(toLocalMessage);
+
+      setMessages((prev) => {
+        const fetchedIds = new Set(mapped.map((m) => m.id));
+        const concurrent = prev.filter((m) => !fetchedIds.has(m.id));
+        return [...mapped, ...concurrent];
+      });
       setHasMoreMessages(hasMore);
-      // Scroll handled by ChatWindow's useEffect([messages]).
       requestAnimationFrame(() => onScrollToBottom());
     } catch (error) {
       console.error("Error loading messages:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [conversationId]);
+  }, [conversationId, onScrollToBottom]);
 
   const handleInputChange = useCallback(
     (value: string): void => {
@@ -263,6 +268,10 @@ export function useChatMessages({
 
   const handleDeleteMessage = useCallback(
     async (id: string) => {
+      if (isTempId(id)) {
+        setMessages((prev) => prev.filter((msg) => msg.id !== id));
+        return;
+      }
       if (!conversationId) return;
       try {
         const token = getAuthToken();
