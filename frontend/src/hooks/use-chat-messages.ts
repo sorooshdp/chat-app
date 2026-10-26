@@ -191,13 +191,13 @@ export function useChatMessages({
       if (conversationId === null || !messageInput.trim() || currentUserId === null) return;
 
       const content = messageInput.trim();
-      const token = getAuthToken();
-      if (!token) {
-        console.error("No auth token found");
-        return;
-      }
 
       if (editingMessage) {
+        const token = getAuthToken();
+        if (!token) {
+          console.error("No auth token found");
+          return;
+        }
         try {
           const updated = await editMessage(conversationId, editingMessage.id, content, token);
           setMessages((prev) =>
@@ -238,6 +238,11 @@ export function useChatMessages({
       setMessages((prev) => [...prev, localMessage]);
 
       try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error("No auth token found");
+        }
+
         const sentMessage = await sendMessage(conversationId, content, token, parentId);
 
         // Replace ONLY the temp message. If the socket already inserted the
