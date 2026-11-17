@@ -1,8 +1,9 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
-import supabase from "../supabaseClient";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import db from "../db";
+import type { User } from "../types/database";
 
 // Require JWT_SECRET - fail fast if not configured
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -46,36 +47,33 @@ router.post("/login", authLimiter, async (req: Request, res: Response) => {
   }
 
   try {
-    // Check if user exists
-    const { data: existingUsers, error: selectError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("email", email)
-      .limit(1);
+    const { rows: existingUsers } = await db.query<Pick<User, "id" | "email" | "name" | "pass">>(
+      "SELECT id, email, name, pass FROM users WHERE email = $1 LIMIT 1",
+      [email],
+    );
 
-    if (selectError) {
-      console.error("Database error during login:", selectError);
-      return res.status(500).json({ error: "An error occurred. Please try again." });
-    }
-
-    if (!existingUsers || existingUsers.length === 0) {
+    const user = existingUsers[0];
+    if (!user) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    const user = existingUsers[0];
-
-    // Compare password
     const passwordMatches = await bcrypt.compare(pass, user.pass);
-
     if (!passwordMatches) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
-    res.status(200).json({ message: 'Login successful', user: { id: user.id, email: user.email, name: user.name }, token });
+    res.status(200).json({
+      message: "Login successful",
+      user: { id: user.id, email: user.email, name: user.name },
+      token,
+    });
   } catch (error) {
-    res.status(500).json({ error: "Unexpected server error" });
+    console.error("Database error during login:", error);
+    res.status(500).json({ error: "An error occurred. Please try again." });
   }
 });
 
@@ -107,46 +105,41 @@ router.post("/signup", signupLimiter, async (req: Request, res: Response) => {
   }
 
   try {
-    // Check if user already exists
-    const { data: existingUsers, error: selectError } = await supabase
-      .from("users")
-      .select("id, email")
-      .eq("email", email)
-      .limit(1);
+    const { rows: existingUsers } = await db.query<Pick<User, "id" | "email">>(
+      "SELECT id, email FROM users WHERE email = $1 LIMIT 1",
+      [email],
+    );
 
-    if (selectError) {
-      console.error("Database error during signup:", selectError);
-      return res.status(500).json({ error: "An error occurred. Please try again." });
-    }
-
-    if (existingUsers && existingUsers.length > 0) {
+    if (existingUsers.length > 0) {
       return res.status(409).json({ error: "User already exists" });
     }
 
     const hashedPass = await bcrypt.hash(pass, 10);
 
-    const { data: user, error: insertError } = await supabase
-      .from("users")
-      .insert([{ email, name, pass: hashedPass }])
-      .select()
-      .single();
+    const { rows: insertedRows } = await db.query<Pick<User, "id" | "email" | "name">>(
+      `INSERT INTO users (email, name, pass)
+       VALUES ($1, $2, $3)
+       RETURNING id, email, name`,
+      [email, name, hashedPass],
+    );
 
-    if (insertError) {
-      console.error("Database error during user creation:", insertError);
+    const user = insertedRows[0];
+    if (!user) {
       return res.status(500).json({ error: "Failed to create account. Please try again." });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
-    // Return only safe user fields (exclude password hash)
     res.status(201).json({
       message: "User created",
       user: { id: user.id, email: user.email, name: user.name },
       token,
     });
   } catch (error) {
-    console.error("Unexpected error during signup:", error);
-    res.status(500).json({ error: "Unexpected server error" });
+    console.error("Database error during signup:", error);
+    res.status(500).json({ error: "Failed to create account. Please try again." });
   }
 });
 
@@ -160,7 +153,7 @@ router.post("/verify", authLimiter, (req: Request, res: Response) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     res.status(200).json({ valid: true, payload: decoded });
-  } catch (error) {
+  } catch {
     res.status(401).json({ error: "Invalid or expired token" });
   }
 });

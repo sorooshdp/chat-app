@@ -1,7 +1,7 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { Server as HTTPServer } from "http";
 import jwt from "jsonwebtoken";
-import supabase from "../supabaseClient";
+import db from "../db";
 import { MessageWithSender } from "../types/database";
 
 function getJwtSecret(): string {
@@ -22,10 +22,6 @@ const JWT_SECRET = getJwtSecret();
 
 interface AuthenticatedSocket extends Socket {
   user?: { id: number; email: string };
-}
-
-interface JoinConversationPayload {
-  conversationId: number;
 }
 
 /** Payload for `conversation:update`. */
@@ -103,41 +99,51 @@ export function initializeSocket(httpServer: HTTPServer): SocketIOServer {
       io!.emit("presence:online", { userId });
 
       void (async () => {
-        const { error } = await supabase
-          .from("users")
-          .update({ status: "online", last_seen: new Date().toISOString() })
-          .eq("id", userId);
-        if (error) console.error(`Failed to mark user ${userId} online:`, error);
-        else console.log(`User ${userId} marked online`);
+        try {
+          await db.query(
+            `UPDATE users SET status = 'online', last_seen = NOW() WHERE id = $1`,
+            [userId],
+          );
+          console.log(`User ${userId} marked online`);
+        } catch (error) {
+          console.error(`Failed to mark user ${userId} online:`, error);
+        }
       })();
 
       socket.emit("presence:list", { onlineUserIds: getOnlineUserIds() });
     }
 
-    socket.on("join:conversation", async (payload: JoinConversationPayload) => {
-      if (!socket.user) return;
+    socket.on("join:conversation", async (payload: unknown) => {
+      const conversationId = parseConversationId(payload);
+      if (!socket.user || !conversationId) return;
 
-      const { data: participant } = await supabase
-        .from("conversation_participants")
-        .select("id")
-        .eq("conversation_id", payload.conversationId)
-        .eq("user_id", socket.user.id)
-        .single();
+      try {
+        const { rows } = await db.query<{ id: number }>(
+          `SELECT id FROM conversation_participants
+           WHERE conversation_id = $1 AND user_id = $2
+           LIMIT 1`,
+          [conversationId, socket.user.id],
+        );
 
-      if (!participant) {
-        socket.emit("error", {
-          message: "Not authorized to join this conversation",
-        });
-        return;
+        if (rows.length === 0) {
+          socket.emit("error", {
+            message: "Not authorized to join this conversation",
+          });
+          return;
+        }
+
+        const roomName = `conversation:${conversationId}`;
+        socket.join(roomName);
+        console.log(`User ${socket.user.id} joined ${roomName}`);
+      } catch (error) {
+        console.error("Error joining conversation:", error);
       }
-
-      const roomName = `conversation:${payload.conversationId}`;
-      socket.join(roomName);
-      console.log(`User ${socket.user.id} joined ${roomName}`);
     });
 
-    socket.on("leave:conversation", (payload: JoinConversationPayload) => {
-      const roomName = `conversation:${payload.conversationId}`;
+    socket.on("leave:conversation", (payload: unknown) => {
+      const conversationId = parseConversationId(payload);
+      if (!conversationId) return;
+      const roomName = `conversation:${conversationId}`;
       socket.leave(roomName);
       console.log(`User ${socket.user?.id} left ${roomName}`);
     });
@@ -147,29 +153,32 @@ export function initializeSocket(httpServer: HTTPServer): SocketIOServer {
       if (!socket.user || !conversationId) return;
 
       const roomName = `conversation:${conversationId}`;
-      // Fast check: if not already joined to the verified room, verify in DB
-      if (!socket.rooms.has(roomName)) {
-        const { data: participant } = await supabase
-          .from("conversation_participants")
-          .select("id")
-          .eq("conversation_id", conversationId)
-          .eq("user_id", socket.user.id)
-          .single();
-        if (!participant) return;
-      }
+      try {
+        if (!socket.rooms.has(roomName)) {
+          const { rows } = await db.query<{ id: number }>(
+            `SELECT id FROM conversation_participants
+             WHERE conversation_id = $1 AND user_id = $2
+             LIMIT 1`,
+            [conversationId, socket.user.id],
+          );
+          if (rows.length === 0) return;
+        }
 
-      const { error } = await supabase
-        .from("messages")
-        .update({ is_read: true })
-        .eq("conversation_id", conversationId)
-        .neq("sender_id", socket.user.id)
-        .eq("is_read", false);
+        await db.query(
+          `UPDATE messages
+           SET is_read = TRUE
+           WHERE conversation_id = $1
+             AND sender_id <> $2
+             AND is_read = FALSE`,
+          [conversationId, socket.user.id],
+        );
 
-      if (!error) {
         socket.to(roomName).emit("messages:read", {
           conversationId,
           readBy: socket.user.id,
         });
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
       }
     });
 
@@ -212,15 +221,15 @@ export function initializeSocket(httpServer: HTTPServer): SocketIOServer {
             io!.emit("presence:offline", { userId });
 
             void (async () => {
-              const { error } = await supabase
-                .from("users")
-                .update({
-                  status: "offline",
-                  last_seen: new Date().toISOString(),
-                })
-                .eq("id", userId);
-              if (error) console.error(`Failed to mark user ${userId} offline:`, error);
-              else console.log(`User ${userId} marked offline`);
+              try {
+                await db.query(
+                  `UPDATE users SET status = 'offline', last_seen = NOW() WHERE id = $1`,
+                  [userId],
+                );
+                console.log(`User ${userId} marked offline`);
+              } catch (error) {
+                console.error(`Failed to mark user ${userId} offline:`, error);
+              }
             })();
           }
         }
@@ -237,15 +246,6 @@ export function emitNewMessage(conversationId: number, message: MessageWithSende
     console.warn("Socket.IO not initialized, cannot emit message");
     return;
   }
-
-  console.log(
-    "[emitNewMessage] payload:",
-    JSON.stringify({
-      id: message.id,
-      reply_to_id: message.reply_to_id,
-      reply_to: message.reply_to,
-    }),
-  );
 
   const roomName = `conversation:${conversationId}`;
   io.to(roomName).emit("message:new", message);

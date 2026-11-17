@@ -114,18 +114,25 @@ export class MessageController {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
-      const messageId = parseInt(req.params.messageId!);
+      const conversationId = Number.parseInt(req.params.conversationId ?? "", 10);
+      const messageId = Number.parseInt(req.params.messageId ?? "", 10);
       const { content } = req.body;
 
-      if (isNaN(messageId) || !content || content.trim().length === 0) {
+      if (
+        Number.isNaN(conversationId) ||
+        Number.isNaN(messageId) ||
+        typeof content !== "string" ||
+        content.trim().length === 0 ||
+        content.trim().length > 5000
+      ) {
         res.status(400).json({ error: "Invalid data" });
         return;
       }
 
-      const message = await MessageService.editMessage(messageId, req.user.id, content.trim());
+      const message = await MessageService.editMessage(conversationId, messageId, req.user.id, content.trim());
       emitMessageUpdated(message.conversation_id, message);
       res.json({ message });
-    } catch (error) {
+    } catch {
       res.status(403).json({ error: "Failed to edit message" });
     }
   }
@@ -144,7 +151,7 @@ export class MessageController {
         return;
       }
 
-      await MessageService.deleteMessage(messageId, req.user.id);
+      await MessageService.deleteMessage(conversationId, messageId, req.user.id);
       emitMessageDeleted(conversationId, messageId);
       res.json({ success: true });
     } catch (error) {

@@ -1,78 +1,87 @@
-import type { ConversationWithDetails, User } from "../types/database";
-import supabase from "../supabaseClient";
+import db from "../db";
+import type { ConversationWithDetails, Message, User } from "../types/database";
+
+interface RawConversationRow {
+  id: number;
+  created_at: string | Date;
+  type: string | null;
+  name: string | null;
+  participants: Array<{
+    user: Pick<User, "id" | "name" | "avatar_url" | "status">;
+  }> | null;
+  last_message: Pick<Message, "content" | "created_at" | "sender_id"> | null;
+  unread_count: number;
+}
+
+const CONVERSATION_DETAILS_QUERY = `
+  SELECT
+    c.id,
+    c.created_at,
+    c.type,
+    c.name,
+    COALESCE(p.participants, '[]'::json) AS participants,
+    lm.last_message,
+    COALESCE(uc.unread_count, 0)::int AS unread_count
+  FROM conversation c
+  INNER JOIN conversation_participants my_cp
+    ON my_cp.conversation_id = c.id AND my_cp.user_id = $1
+  LEFT JOIN LATERAL (
+    SELECT json_agg(
+      json_build_object(
+        'user', json_build_object(
+          'id', u.id,
+          'name', u.name,
+          'avatar_url', u.avatar_url,
+          'status', u.status,
+          'last_seen', u.last_seen
+        )
+      )
+    ) AS participants
+    FROM conversation_participants cp
+    INNER JOIN users u ON u.id = cp.user_id
+    WHERE cp.conversation_id = c.id AND cp.user_id <> $1
+  ) p ON TRUE
+  LEFT JOIN LATERAL (
+    SELECT json_build_object(
+      'content', m.content,
+      'created_at', m.created_at,
+      'sender_id', m.sender_id
+    ) AS last_message
+    FROM messages m
+    WHERE m.conversation_id = c.id
+    ORDER BY m.created_at DESC, m.id DESC
+    LIMIT 1
+  ) lm ON TRUE
+  LEFT JOIN LATERAL (
+    SELECT COUNT(*)::int AS unread_count
+    FROM messages m
+    WHERE m.conversation_id = c.id
+      AND m.is_read = FALSE
+      AND m.is_deleted = FALSE
+      AND m.sender_id <> $1
+  ) uc ON TRUE
+`;
 
 export class ConversationService {
   /**
    * Get conversations for a user with authorization check
    */
   static async getUserConversations(userId: number): Promise<ConversationWithDetails[]> {
-    // Business rule: Only fetch conversations user is participant of
-    const { data: participantConvs, error } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", userId);
+    try {
+      const { rows } = await db.query<RawConversationRow>(
+        `${CONVERSATION_DETAILS_QUERY}
+         ORDER BY COALESCE(
+           (lm.last_message->>'created_at')::timestamptz,
+           c.created_at
+         ) DESC`,
+        [userId],
+      );
 
-    if (error) throw new Error(`Database error: ${error.message}`);
-    if (!participantConvs || participantConvs.length === 0) return [];
-
-    const conversationIds = participantConvs.map((p) => p.conversation_id);
-
-    const { data: conversations, error: convError } = await supabase
-      .from("conversation")
-      .select(
-        `
-        *,
-        participants:conversation_participants(
-          user:users(id, name, avatar_url, status, last_seen)
-        ),
-        messages(content, created_at, sender_id)
-      `,
-      )
-      .in("id", conversationIds)
-      .order("created_at", { ascending: false, foreignTable: "messages" })
-      .limit(1, { foreignTable: "messages" });
-
-    if (convError) throw new Error(`Database error: ${convError.message}`);
-
-    const unreadCounts = await this.getUnreadCounts(conversationIds, userId);
-
-    return conversations.map((conv) => ({
-      id: conv.id,
-      created_at: conv.created_at,
-      type: conv.type,
-      name: conv.name,
-      participants: conv.participants.filter((p: { user: User }) => p.user.id !== userId),
-      last_message: conv.messages[0] || null,
-      unread_count: unreadCounts.get(conv.id) || 0,
-    }));
-  }
-
-  /**
-   * Calculate unread message counts for conversations using is_read field
-   * Optimized: Single query instead of N queries
-   */
-  private static async getUnreadCounts(conversationIds: number[], userId: number): Promise<Map<number, number>> {
-    const unreadCounts = new Map<number, number>();
-
-    if (conversationIds.length === 0) return unreadCounts;
-
-    // Single query to fetch all unread messages across conversations
-    const { data, error } = await supabase
-      .from("messages")
-      .select("conversation_id")
-      .in("conversation_id", conversationIds)
-      .eq("is_read", false)
-      .neq("sender_id", userId);
-
-    if (error || !data) return unreadCounts;
-
-    // Count in memory (much faster than N separate queries)
-    for (const msg of data) {
-      const currentCount = unreadCounts.get(msg.conversation_id) || 0;
-      unreadCounts.set(msg.conversation_id, currentCount + 1);
+      return rows.map((row) => this.formatConversation(row));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`Database error: ${message}`);
     }
-
-    return unreadCounts;
   }
 
   /**
@@ -97,100 +106,91 @@ export class ConversationService {
       if (existingDM) return existingDM;
     }
 
-    // Atomic transaction: Create conversation + add participants
-    const { data: conversation, error: convError } = await supabase
-      .from("conversation")
-      .insert({ type, name })
-      .select("id")
-      .single();
+    const allParticipants = [creatorId, ...uniqueOtherIds];
+    const client = await db.connect();
 
-    if (convError) throw new Error(`Failed to create conversation: ${convError.message}`);
+    try {
+      await client.query("BEGIN");
 
-    const allParticipants = [creatorId, ...participantIds];
-    const { error: participantError } = await supabase.from("conversation_participants").insert(
-      allParticipants.map((userId) => ({
-        conversation_id: conversation.id,
-        user_id: userId,
-      })),
-    );
+      const { rows: convRows } = await client.query<{ id: number }>(
+        `INSERT INTO conversation (type, name)
+         VALUES ($1, $2)
+         RETURNING id`,
+        [type, name ?? null],
+      );
 
-    if (participantError) {
-      // Rollback: delete conversation if participant insertion fails
-      await supabase.from("conversation").delete().eq("id", conversation.id);
-      throw new Error(`Failed to add participants: ${participantError.message}`);
+      const conversationId = convRows[0]?.id;
+      if (!conversationId) {
+        throw new Error("Failed to create conversation");
+      }
+
+      await client.query(
+        `INSERT INTO conversation_participants (conversation_id, user_id)
+         SELECT $1, UNNEST($2::int[])`,
+        [conversationId, allParticipants],
+      );
+
+      await client.query("COMMIT");
+      return conversationId;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      const message = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`Failed to create conversation: ${message}`);
+    } finally {
+      client.release();
     }
-
-    return conversation.id;
   }
 
   private static async findExistingDM(user1: number, user2: number): Promise<number | null> {
-    const { data } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id, conversation!inner(type)")
-      .eq("conversation.type", "dm")
-      .in("user_id", [user1, user2]);
-
-    if (!data) return null;
-
-    const conversationCounts = data.reduce(
-      (acc, item) => {
-        acc[item.conversation_id] = (acc[item.conversation_id] || 0) + 1;
-        return acc;
-      },
-      {} as Record<number, number>,
+    const { rows } = await db.query<{ conversation_id: number }>(
+      `SELECT cp.conversation_id
+       FROM conversation_participants cp
+       INNER JOIN conversation c ON c.id = cp.conversation_id
+       WHERE c.type = 'dm'
+         AND cp.user_id IN ($1, $2)
+       GROUP BY cp.conversation_id
+       HAVING COUNT(DISTINCT cp.user_id) = 2
+       LIMIT 1`,
+      [user1, user2],
     );
 
-    const dmConversationId = Object.entries(conversationCounts).find(([_, count]) => count === 2)?.[0];
-
-    return dmConversationId ? Number.parseInt(dmConversationId, 10) : null;
+    return rows[0]?.conversation_id ?? null;
   }
 
   /**
    * Get a single conversation by ID with authorization check
    */
-  static async getConversationById(conversationId: number, userId: number): Promise<ConversationWithDetails | null> {
-    // Verify user is participant
-    const { data: participant } = await supabase
-      .from("conversation_participants")
-      .select("id")
-      .eq("conversation_id", conversationId)
-      .eq("user_id", userId)
-      .single();
+  static async getConversationById(
+    conversationId: number,
+    userId: number,
+  ): Promise<ConversationWithDetails | null> {
+    try {
+      const { rows } = await db.query<RawConversationRow>(
+        `${CONVERSATION_DETAILS_QUERY}
+         WHERE c.id = $2
+         LIMIT 1`,
+        [userId, conversationId],
+      );
 
-    if (!participant) {
-      return null; // Not authorized or doesn't exist
-    }
-
-    const { data: conversation, error } = await supabase
-      .from("conversation")
-      .select(
-        `
-        *,
-        participants:conversation_participants(
-          user:users(id, name, avatar_url, status, last_seen)
-        ),
-        messages(content, created_at, sender_id)
-      `,
-      )
-      .eq("id", conversationId)
-      .order("created_at", { ascending: false, foreignTable: "messages" })
-      .limit(1, { foreignTable: "messages" })
-      .single();
-
-    if (error || !conversation) {
+      const row = rows[0];
+      return row ? this.formatConversation(row) : null;
+    } catch {
       return null;
     }
+  }
 
-    const unreadCounts = await this.getUnreadCounts([conversationId], userId);
+  private static formatConversation(row: RawConversationRow): ConversationWithDetails {
+    const createdAt =
+      row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at;
 
     return {
-      id: conversation.id,
-      created_at: conversation.created_at,
-      type: conversation.type,
-      name: conversation.name,
-      participants: conversation.participants.filter((p: { user: User }) => p.user.id !== userId),
-      last_message: conversation.messages[0] || null,
-      unread_count: unreadCounts.get(conversationId) || 0,
+      id: row.id,
+      created_at: createdAt,
+      type: row.type,
+      name: row.name,
+      participants: row.participants ?? [],
+      last_message: row.last_message ?? null,
+      unread_count: Number(row.unread_count ?? 0),
     };
   }
 }

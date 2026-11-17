@@ -7,6 +7,7 @@ import conversationRouter from './routes/conversations';
 import userRoutes from './routes/user';
 import messageRoutes from './routes/message';
 import { initializeSocket } from './socket';
+import db from "./db"
 
 dotenv.config();
 
@@ -64,6 +65,21 @@ app.use((
 });
 
 const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, async () => {
+  try {
+    // Clear stale online statuses left behind if a previous process crashed
+    await db.query(`UPDATE users SET status = 'offline' WHERE status = 'online'`);
+  } catch (err) {
+    console.error('Database startup check failed:', err);
+  }
   console.log(`Backend running on port ${PORT}`);
 });
+
+const shutdown = (): void => {
+  httpServer.close(async () => {
+    await db.end();
+    process.exit(0);
+  });
+};
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
