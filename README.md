@@ -1,13 +1,13 @@
 # Nexus Chat App
 
-Nexus is a real-time chat application with a Next.js frontend, an Express API, Supabase persistence, and Socket.IO events for messaging and presence.
+Nexus is a real-time chat application with a Next.js frontend, an Express API, PostgreSQL persistence, and Socket.IO events for messaging and presence.
 
 ## Stack
 
 - Frontend: Next.js 15 App Router, React 19, TypeScript
 - Styling: Tailwind CSS 4 and custom UI components
 - Backend: Express 5 and TypeScript
-- Database: Supabase PostgreSQL
+- Database: PostgreSQL (node-postgres / `pg`)
 - Authentication: JWT tokens, bcrypt password hashing, and route middleware
 - Real-time features: Socket.IO
 - Package manager: pnpm
@@ -34,7 +34,7 @@ chat-app/
 │   │   ├── controllers/       Request handlers
 │   │   ├── middlewares/       JWT authentication and request middleware
 │   │   ├── routes/            Express API routes
-│   │   ├── services/          Supabase queries and business rules
+│   │   ├── services/          SQL queries and business rules
 │   │   ├── socket/            Socket.IO server and events
 │   │   └── types/             Backend database types
 │   └── package.json
@@ -56,7 +56,7 @@ chat-app/
 
 - Node.js 18 or newer
 - pnpm
-- A Supabase project with the application schema
+- Docker (for the local PostgreSQL container) or an existing PostgreSQL 14+ database
 - Backend and frontend environment variables configured
 
 ## Local Development
@@ -71,13 +71,21 @@ cd ../frontend
 pnpm install
 ```
 
+Start PostgreSQL and create the schema (the schema is applied automatically the first time the container is created):
+
+```bash
+cd backend
+pnpm db:up
+```
+
 Create `backend/.env`:
 
 ```env
 PORT=8080
 FRONTEND_URL=http://localhost:3000
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+DATABASE_URL=postgresql://nexus:nexus_password@localhost:5432/nexus
+# Set DB_SSL=true when connecting to a hosted database that requires TLS
+DB_SSL=false
 JWT_SECRET=replace-with-a-long-random-secret
 ```
 
@@ -85,12 +93,10 @@ Create `frontend/.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 JWT_SECRET=replace-with-the-same-secret-used-by-the-backend
 ```
 
-Do not commit either environment file. Never expose `SUPABASE_SERVICE_ROLE_KEY` to the frontend.
+Do not commit either environment file.
 
 Start the backend in one terminal:
 
@@ -137,6 +143,9 @@ Run these commands from `backend/`:
 | `pnpm test:watch` | Run Jest in watch mode |
 | `pnpm test:coverage` | Run Jest with coverage |
 | `pnpm clean` | Remove the backend `dist/` directory |
+| `pnpm db:up` | Start the local PostgreSQL container |
+| `pnpm db:down` | Stop the local PostgreSQL container |
+| `pnpm db:init` | Re-apply `db/init.sql` to the local container |
 
 ## Application Routes
 
@@ -207,8 +216,8 @@ The documented deployment targets are Vercel for the frontend and Render for the
 
 Typical production variables are:
 
-- Render: `FRONTEND_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, and optionally `PORT`
-- Vercel: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Render: `FRONTEND_URL`, `DATABASE_URL`, `JWT_SECRET`, and optionally `PORT`, `DB_SSL`, and `DB_SSL_REJECT_UNAUTHORIZED`
+- Vercel: `NEXT_PUBLIC_API_URL` and `JWT_SECRET`
 
 Configure CORS with the exact deployed frontend URL. Multiple frontend origins can be separated by commas.
 
@@ -220,7 +229,7 @@ Configure CORS with the exact deployed frontend URL. Multiple frontend origins c
 ## Security Basics
 
 - Keep `.env` and `.env.local` files out of version control.
-- Keep the Supabase service-role key on the backend only.
+- Keep the database connection string on the backend only.
 - Use a strong, stable `JWT_SECRET` in each deployed environment.
 - Configure `FRONTEND_URL` narrowly instead of allowing arbitrary origins.
 - Treat client-side JWT cookies as readable by JavaScript and protect production traffic with HTTPS.

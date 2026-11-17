@@ -94,5 +94,5 @@ jobs:
       - name: Build
         # Verified: the build succeeds with no NEXT_PUBLIC_* vars set, so no
         # secrets are needed in CI. Add them here only if a future change makes
-        # a page read Supabase at build time.
+        # a page read backend configuration at build time.
         run: pnpm run build
