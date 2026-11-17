@@ -3,10 +3,17 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import authRouter from '../../routes/auth';
-import supabase from '../../supabaseClient';
+import db from '../../db';
 
-// Mock Supabase client
-jest.mock('../../supabaseClient');
+jest.mock('../../db', () => ({
+  __esModule: true,
+  default: {
+    query: jest.fn(),
+    connect: jest.fn(),
+  },
+}));
+
+const mockedQuery = db.query as jest.Mock;
 
 const app = express();
 app.use(express.json());
@@ -25,21 +32,11 @@ describe('Authentication Routes', () => {
         id: 1,
         email: 'test@example.com',
         name: 'Test User',
-        pass: await bcrypt.hash('Password123!', 10),
       };
 
-      // Mock Supabase queries
-      (supabase.from as jest.Mock).mockImplementation((table: string) => {
-        if (table === 'users') {
-          return {
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            limit: jest.fn().mockResolvedValue({ data: [], error: null }),
-            insert: jest.fn().mockReturnThis(),
-            single: jest.fn().mockResolvedValue({ data: mockUser, error: null }),
-          };
-        }
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [] }) // Check existing user
+        .mockResolvedValueOnce({ rows: [mockUser] }); // Insert user
 
       const response = await request(app)
         .post('/api/auth/signup')
@@ -112,14 +109,9 @@ describe('Authentication Routes', () => {
     });
 
     it('should reject duplicate email', async () => {
-      (supabase.from as jest.Mock).mockImplementation(() => ({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue({
-          data: [{ id: 1, email: 'test@example.com' }],
-          error: null,
-        }),
-      }));
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 1, email: 'test@example.com' }],
+      });
 
       const response = await request(app)
         .post('/api/auth/signup')
@@ -157,11 +149,7 @@ describe('Authentication Routes', () => {
         pass: hashedPassword,
       };
 
-      (supabase.from as jest.Mock).mockImplementation(() => ({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue({ data: [mockUser], error: null }),
-      }));
+      mockedQuery.mockResolvedValueOnce({ rows: [mockUser] });
 
       const response = await request(app)
         .post('/api/auth/login')
@@ -185,14 +173,11 @@ describe('Authentication Routes', () => {
       const mockUser = {
         id: 1,
         email: 'test@example.com',
+        name: 'Test User',
         pass: hashedPassword,
       };
 
-      (supabase.from as jest.Mock).mockImplementation(() => ({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue({ data: [mockUser], error: null }),
-      }));
+      mockedQuery.mockResolvedValueOnce({ rows: [mockUser] });
 
       const response = await request(app)
         .post('/api/auth/login')
@@ -206,11 +191,7 @@ describe('Authentication Routes', () => {
     });
 
     it('should reject login with non-existent email', async () => {
-      (supabase.from as jest.Mock).mockImplementation(() => ({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue({ data: [], error: null }),
-      }));
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
 
       const response = await request(app)
         .post('/api/auth/login')
@@ -259,7 +240,7 @@ describe('Authentication Routes', () => {
       const token = jwt.sign(
         { id: 1, email: 'test@example.com' },
         JWT_SECRET,
-        { expiresIn: '-1s' } // Already expired
+        { expiresIn: '-1s' }
       );
 
       const response = await request(app)

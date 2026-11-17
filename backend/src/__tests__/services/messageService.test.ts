@@ -1,15 +1,17 @@
 import { MessageService } from '../../services/messageService';
-import supabase from '../../supabaseClient';
-import { mockSupabase } from '../helpers/supabaseMock';
+import db from '../../db';
 
-// Replace the whole module with auto-generated jest mocks. Nothing real
-// reaches the network, and `supabase.from` becomes a jest.Mock we can program.
-jest.mock('../../supabaseClient');
+jest.mock('../../db', () => ({
+  __esModule: true,
+  default: {
+    query: jest.fn(),
+    connect: jest.fn(),
+  },
+}));
 
-const PARTICIPANT = { data: { id: 99 }, error: null };
-const NOT_PARTICIPANT = { data: null, error: null };
+const mockedQuery = db.query as jest.Mock;
 
-function messageRow(overrides: Partial<Record<string, unknown>> = {}) {
+function rawMessageRow(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: 1,
     content: 'hello',
@@ -17,7 +19,13 @@ function messageRow(overrides: Partial<Record<string, unknown>> = {}) {
     sender_id: 10,
     conversation_id: 5,
     is_read: false,
-    sender: { id: 10, name: 'Ada', avatar_url: null },
+    is_edited: false,
+    is_deleted: false,
+    reply_to_id: null,
+    sender_name: 'Ada',
+    sender_avatar_url: null,
+    reply_content: null,
+    reply_sender_name: null,
     ...overrides,
   };
 }
@@ -29,29 +37,25 @@ describe('MessageService', () => {
 
   describe('getConversationMessages', () => {
     it('rejects a user who is not a participant', async () => {
-      mockSupabase(supabase, { conversation_participants: NOT_PARTICIPANT });
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
 
       await expect(MessageService.getConversationMessages(5, 10)).rejects.toThrow(
         'Unauthorized: Not a participant of this conversation',
       );
 
-      // Authorization must happen before any message read.
-      expect((supabase.from as jest.Mock)).not.toHaveBeenCalledWith('messages');
+      expect(mockedQuery).toHaveBeenCalledTimes(1);
     });
 
     it('returns messages oldest-first for a participant', async () => {
-      // Supabase is queried newest-first; the service reverses the rows.
-      mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: {
-          data: [
-            messageRow({ id: 3, content: 'newest' }),
-            messageRow({ id: 2, content: 'middle' }),
-            messageRow({ id: 1, content: 'oldest' }),
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({
+          rows: [
+            rawMessageRow({ id: 3, content: 'newest' }),
+            rawMessageRow({ id: 2, content: 'middle' }),
+            rawMessageRow({ id: 1, content: 'oldest' }),
           ],
-          error: null,
-        },
-      });
+        });
 
       const messages = await MessageService.getConversationMessages(5, 10);
 
@@ -59,82 +63,47 @@ describe('MessageService', () => {
     });
 
     it('scopes the query to the conversation and applies the default limit', async () => {
-      const db = mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: [], error: null },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({ rows: [] });
 
       await MessageService.getConversationMessages(5, 10);
 
-      const query = db.forTable('messages')!;
-      expect(query.eq).toHaveBeenCalledWith('conversation_id', 5);
-      expect(query.order).toHaveBeenCalledWith('created_at', { ascending: false });
-      expect(query.limit).toHaveBeenCalledWith(50);
-      // No cursor requested, so no `lt` filter.
-      expect(query.lt).not.toHaveBeenCalled();
-    });
-
-    it('applies the cursor as a `lt` filter when `before` is given', async () => {
-      const db = mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: [], error: null },
-      });
-
-      await MessageService.getConversationMessages(5, 10, 20, 42);
-
-      const query = db.forTable('messages')!;
-      expect(query.limit).toHaveBeenCalledWith(20);
-      expect(query.lt).toHaveBeenCalledWith('id', 42);
-    });
-
-    it('throws a generic error when the database read fails', async () => {
-      mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: null, error: { message: 'connection reset' } },
-      });
-
-      // The raw driver error must not leak to the caller.
-      await expect(MessageService.getConversationMessages(5, 10)).rejects.toThrow(
-        'Failed to fetch messages',
+      expect(mockedQuery).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('WHERE m.conversation_id = $1'),
+        [5, 50],
       );
     });
 
-    it('normalises an array-shaped sender join into a single object', async () => {
-      mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        // Supabase returns embedded relations as arrays in some configurations.
-        messages: { data: [messageRow({ sender: [{ id: 10, name: 'Ada', avatar_url: null }] })], error: null },
-      });
+    it('applies the cursor filter when `before` is given', async () => {
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({ rows: [] });
 
-      const [message] = await MessageService.getConversationMessages(5, 10);
+      await MessageService.getConversationMessages(5, 10, 20, 42);
 
-      expect(message!.sender).toEqual({ id: 10, name: 'Ada', avatar_url: null });
+      expect(mockedQuery).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('AND m.id < $2'),
+        [5, 42, 20],
+      );
     });
 
-    it('falls back to a placeholder sender when the join is empty', async () => {
-      mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: [messageRow({ sender: null, sender_id: 77 })], error: null },
-      });
+    it('throws a generic error when the database read fails', async () => {
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockRejectedValueOnce(new Error('connection reset'));
 
-      const [message] = await MessageService.getConversationMessages(5, 10);
-
-      expect(message!.sender).toEqual({ id: 77, name: null, avatar_url: null });
-    });
-
-    it('returns an empty array when the table returns no rows', async () => {
-      mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: null, error: null },
-      });
-
-      await expect(MessageService.getConversationMessages(5, 10)).resolves.toEqual([]);
+      await expect(MessageService.getConversationMessages(5, 10)).rejects.toThrow(
+        'Failed to fetch messages',
+      );
     });
   });
 
   describe('sendMessage', () => {
     it('rejects a sender who is not a participant', async () => {
-      mockSupabase(supabase, { conversation_participants: NOT_PARTICIPANT });
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
 
       await expect(MessageService.sendMessage(5, 10, 'hi')).rejects.toThrow(
         'Unauthorized: Not a participant of this conversation',
@@ -142,55 +111,66 @@ describe('MessageService', () => {
     });
 
     it('inserts the message and returns it with sender details', async () => {
-      const db = mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: messageRow({ id: 12, content: 'hi' }), error: null },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({
+          rows: [rawMessageRow({ id: 12, content: 'hi' })],
+        });
 
       const message = await MessageService.sendMessage(5, 10, 'hi');
 
-      expect(db.forTable('messages')!.insert).toHaveBeenCalledWith({
-        conversation_id: 5,
-        sender_id: 10,
-        content: 'hi',
-        reply_to_id: null,
-      });
+      expect(mockedQuery).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('INSERT INTO messages'),
+        [5, 10, 'hi', null],
+      );
       expect(message).toMatchObject({
         id: 12,
         content: 'hi',
         conversation_id: 5,
         sender_id: 10,
-        sender: { id: 10, name: 'Ada' },
+        sender: { id: 10, name: 'Ada', avatar_url: null },
       });
     });
 
     it('throws a generic error when the insert fails', async () => {
-      mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: null, error: { message: 'constraint violation' } },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockRejectedValueOnce(new Error('constraint violation'));
 
       await expect(MessageService.sendMessage(5, 10, 'hi')).rejects.toThrow('Failed to send message');
     });
   });
 
+  describe('editMessage and deleteMessage', () => {
+    it('throws when editing a message not owned by sender or not in conversation', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await expect(MessageService.editMessage(5, 12, 10, 'updated')).rejects.toThrow(
+        'Failed to edit message or unauthorized',
+      );
+    });
+
+    it('throws when deleting a message not owned by sender', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await expect(MessageService.deleteMessage(5, 12, 10)).rejects.toThrow(
+        'Failed to delete message or unauthorized',
+      );
+    });
+  });
+
   describe('getConversationParticipantIds', () => {
     it('maps rows to user ids', async () => {
-      mockSupabase(supabase, {
-        conversation_participants: {
-          data: [{ user_id: 10 }, { user_id: 11 }, { user_id: 12 }],
-          error: null,
-        },
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ user_id: 10 }, { user_id: 11 }, { user_id: 12 }],
       });
 
       await expect(MessageService.getConversationParticipantIds(5)).resolves.toEqual([10, 11, 12]);
     });
 
     it('returns an empty array on error instead of throwing', async () => {
-      // Callers use this for socket fan-out, so a failure must degrade quietly.
-      mockSupabase(supabase, {
-        conversation_participants: { data: null, error: { message: 'boom' } },
-      });
+      mockedQuery.mockRejectedValueOnce(new Error('boom'));
 
       await expect(MessageService.getConversationParticipantIds(5)).resolves.toEqual([]);
     });

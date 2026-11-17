@@ -2,17 +2,19 @@ import request from 'supertest';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import messageRoutes from '../../routes/message';
-import supabase from '../../supabaseClient';
+import db from '../../db';
 import { emitNewMessage, emitConversationListUpdate } from '../../socket';
-import { mockSupabase } from '../helpers/supabaseMock';
 
-/**
- * Integration test: the real router + auth middleware + controller + service
- * run together over HTTP (supertest drives an ephemeral server). Only the two
- * process boundaries are faked — the database and the socket layer.
- */
-jest.mock('../../supabaseClient');
+jest.mock('../../db', () => ({
+  __esModule: true,
+  default: {
+    query: jest.fn(),
+    connect: jest.fn(),
+  },
+}));
 jest.mock('../../socket');
+
+const mockedQuery = db.query as jest.Mock;
 
 const app = express();
 app.use(express.json());
@@ -22,10 +24,7 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 const USER = { id: 10, email: 'ada@example.com' };
 const authHeader = `Bearer ${jwt.sign(USER, JWT_SECRET, { expiresIn: '1h' })}`;
 
-const PARTICIPANT = { data: { id: 99 }, error: null };
-const NOT_PARTICIPANT = { data: null, error: null };
-
-function messageRow(overrides: Record<string, unknown> = {}) {
+function rawMessageRow(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
     content: 'hello',
@@ -33,7 +32,13 @@ function messageRow(overrides: Record<string, unknown> = {}) {
     sender_id: USER.id,
     conversation_id: 5,
     is_read: false,
-    sender: { id: USER.id, name: 'Ada', avatar_url: null },
+    is_edited: false,
+    is_deleted: false,
+    reply_to_id: null,
+    sender_name: 'Ada',
+    sender_avatar_url: null,
+    reply_content: null,
+    reply_sender_name: null,
     ...overrides,
   };
 }
@@ -49,8 +54,7 @@ describe('Message routes', () => {
 
       expect(response.status).toBe(401);
       expect(response.body).toEqual({ error: 'Unauthorized' });
-      // The request must never reach the database.
-      expect(supabase.from as jest.Mock).not.toHaveBeenCalled();
+      expect(mockedQuery).not.toHaveBeenCalled();
     });
 
     it('rejects a token signed with the wrong secret', async () => {
@@ -62,26 +66,25 @@ describe('Message routes', () => {
     });
 
     it('returns messages and hasMore=false for a short page', async () => {
-      mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: [messageRow({ id: 2 }), messageRow({ id: 1 })], error: null },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({
+          rows: [rawMessageRow({ id: 2 }), rawMessageRow({ id: 1 })],
+        });
 
       const response = await request(app).get('/api/messages/5').set('Authorization', authHeader);
 
       expect(response.status).toBe(200);
       expect(response.body.messages).toHaveLength(2);
-      // Oldest-first, as the service reverses the newest-first query.
       expect(response.body.messages.map((m: any) => m.id)).toEqual([1, 2]);
       expect(response.body.hasMore).toBe(false);
     });
 
     it('reports hasMore=true when the page is full', async () => {
-      const full = Array.from({ length: 2 }, (_, i) => messageRow({ id: i + 1 }));
-      mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: full, error: null },
-      });
+      const full = Array.from({ length: 2 }, (_, i) => rawMessageRow({ id: i + 1 }));
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({ rows: full });
 
       const response = await request(app)
         .get('/api/messages/5?limit=2')
@@ -92,25 +95,23 @@ describe('Message routes', () => {
     });
 
     it('clamps an oversized limit to 100', async () => {
-      const db = mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: [], error: null },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({ rows: [] });
 
       await request(app).get('/api/messages/5?limit=9999').set('Authorization', authHeader);
 
-      expect(db.forTable('messages')!.limit).toHaveBeenCalledWith(100);
+      expect(mockedQuery).toHaveBeenNthCalledWith(2, expect.any(String), [5, 100]);
     });
 
     it('falls back to the default limit when limit is not a number', async () => {
-      const db = mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: [], error: null },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({ rows: [] });
 
       await request(app).get('/api/messages/5?limit=abc').set('Authorization', authHeader);
 
-      expect(db.forTable('messages')!.limit).toHaveBeenCalledWith(50);
+      expect(mockedQuery).toHaveBeenNthCalledWith(2, expect.any(String), [5, 50]);
     });
 
     it('rejects a non-numeric conversation id', async () => {
@@ -123,7 +124,7 @@ describe('Message routes', () => {
     });
 
     it('returns 403 when the user is not a participant', async () => {
-      mockSupabase(supabase, { conversation_participants: NOT_PARTICIPANT });
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
 
       const response = await request(app).get('/api/messages/5').set('Authorization', authHeader);
 
@@ -132,10 +133,9 @@ describe('Message routes', () => {
     });
 
     it('returns 500 without leaking the driver error', async () => {
-      mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: null, error: { message: 'connection reset by peer' } },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockRejectedValueOnce(new Error('connection reset by peer'));
 
       const response = await request(app).get('/api/messages/5').set('Authorization', authHeader);
 
@@ -152,13 +152,10 @@ describe('Message routes', () => {
     });
 
     it('creates the message and broadcasts it', async () => {
-      mockSupabase(supabase, {
-        conversation_participants: [
-          PARTICIPANT, // membership check
-          { data: [{ user_id: 10 }, { user_id: 11 }], error: null }, // fan-out lookup
-        ],
-        messages: { data: messageRow({ id: 12, content: 'hi' }), error: null },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({ rows: [rawMessageRow({ id: 12, content: 'hi' })] })
+        .mockResolvedValueOnce({ rows: [{ user_id: 10 }, { user_id: 11 }] });
 
       const response = await request(app)
         .post('/api/messages/5')
@@ -177,18 +174,20 @@ describe('Message routes', () => {
     });
 
     it('trims whitespace before persisting', async () => {
-      const db = mockSupabase(supabase, {
-        conversation_participants: [PARTICIPANT, { data: [], error: null }],
-        messages: { data: messageRow({ content: 'hi' }), error: null },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({ rows: [rawMessageRow({ content: 'hi' })] })
+        .mockResolvedValueOnce({ rows: [] });
 
       await request(app)
         .post('/api/messages/5')
         .set('Authorization', authHeader)
         .send({ content: '   hi   ' });
 
-      expect(db.forTable('messages')!.insert).toHaveBeenCalledWith(
-        expect.objectContaining({ content: 'hi' }),
+      expect(mockedQuery).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('INSERT INTO messages'),
+        [5, USER.id, 'hi', null],
       );
     });
 
@@ -220,10 +219,10 @@ describe('Message routes', () => {
 
     it('accepts content of exactly 5000 characters', async () => {
       const content = 'a'.repeat(5000);
-      mockSupabase(supabase, {
-        conversation_participants: [PARTICIPANT, { data: [], error: null }],
-        messages: { data: messageRow({ content }), error: null },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({ rows: [rawMessageRow({ content })] })
+        .mockResolvedValueOnce({ rows: [] });
 
       const response = await request(app)
         .post('/api/messages/5')
@@ -234,7 +233,7 @@ describe('Message routes', () => {
     });
 
     it('returns 403 and does not broadcast when the user is not a participant', async () => {
-      mockSupabase(supabase, { conversation_participants: NOT_PARTICIPANT });
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
 
       const response = await request(app)
         .post('/api/messages/5')
@@ -246,10 +245,9 @@ describe('Message routes', () => {
     });
 
     it('does not broadcast when the insert fails', async () => {
-      mockSupabase(supabase, {
-        conversation_participants: PARTICIPANT,
-        messages: { data: null, error: { message: 'constraint violation' } },
-      });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ id: 99 }] })
+        .mockRejectedValueOnce(new Error('constraint violation'));
 
       const response = await request(app)
         .post('/api/messages/5')
